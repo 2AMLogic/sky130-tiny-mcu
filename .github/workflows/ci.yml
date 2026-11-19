@@ -30,6 +30,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Judge the actual commit under test with its history, not the
+          # ephemeral shallow merge ref actions/checkout produces by default:
+          # on a depth-1 merge tip the file history is grafted away, and a
+          # clean merge tip hides a file inherited from one parent. Issue #11
+          # measured the stamp guard pass vacuously on both shapes.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       - name: Install Icarus Verilog at the pinned version (source build)
         run: |
           pin="$(sed -n 's/^PIN_IVERILOG="\([^"]*\)".*/\1/p' scripts/setup-env.sh)"
@@ -74,4 +82,13 @@ jobs:
       - name: WORK_PLAN stamp guard and its fixture test (issue #11)
         run: |
           scripts/tests/test-check-work-plan-stamp.sh
-          scripts/check-work-plan-stamp.sh
+          # Judge only the commits this event adds: the PR's range, the
+          # merge-queue entry's range, or the pushed commits on main. An
+          # empty or all-zero base (branch creation) falls back to judging
+          # HEAD's full history; a base that does not resolve is exit 2
+          # (loud), never a silent pass.
+          base='${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}'
+          if [[ "$base" =~ ^0+$ ]]; then
+            base=''
+          fi
+          scripts/check-work-plan-stamp.sh "$base"
