@@ -11,4 +11,7 @@ _None yet._
 
 ### 2026-11-19
 
-_No merged PRs or closed issues yet._
+- **PR #8**: fix: probe tool versions before any smoke record write; README pins point at setup-env.sh
+- **Issue #7** (closed): verification harness: two remaining pin/record drift surfaces (half-written record on probe failure; duplicated pin literals in README)
+- **PR #5**: harness: add cocotb+Icarus smoke runner with recorded evidence and CI
+- **Issue #2** (closed): Bootstrap the verification harness
