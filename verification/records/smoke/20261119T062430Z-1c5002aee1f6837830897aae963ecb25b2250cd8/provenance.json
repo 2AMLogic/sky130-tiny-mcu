@@ -1,0 +1,9 @@
+{
+  "commit": "1c5002aee1f6837830897aae963ecb25b2250cd8",
+  "pdk_revision": "n/a, no PDK used (RTL simulation only)",
+  "tool_versions": {
+    "cocotb": "2.0.1",
+    "iverilog": "13.0"
+  },
+  "command": "make -C verification smoke"
+}
