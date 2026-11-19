@@ -11,6 +11,8 @@ _None yet._
 
 ### 2026-11-19
 
+- **PR #13**: ci: guard WORK_PLAN stamp against postdating its commit
+- **Issue #11** (closed): WORK_PLAN `_Generated:` stamp is not tied to generation time (postdates its own commit)
 - **PR #8**: fix: probe tool versions before any smoke record write; README pins point at setup-env.sh
 - **Issue #7** (closed): verification harness: two remaining pin/record drift surfaces (half-written record on probe failure; duplicated pin literals in README)
 - **PR #5**: harness: add cocotb+Icarus smoke runner with recorded evidence and CI
