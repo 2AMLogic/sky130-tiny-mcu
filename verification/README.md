@@ -15,13 +15,14 @@ party can run.
 
 ## Cold start
 
-Needs `iverilog` 13.0 and `cocotb` 2.0.1 (pins in
+Needs `iverilog` and `cocotb` at the versions pinned in
 [`../scripts/setup-env.sh`](../scripts/setup-env.sh), the one pin source;
 `--check` verifies the environment against them and fails, never skips, on a
-mismatch).
+mismatch.
 
 ```
-python3 -m venv .venv && .venv/bin/pip install cocotb==2.0.1
+python3 -m venv .venv && .venv/bin/pip install \
+    "cocotb==$(sed -n 's/^PIN_COCOTB="\([^"]*\)".*/\1/p' scripts/setup-env.sh)"
 . .venv/bin/activate
 scripts/setup-env.sh --check
 make -C verification smoke    # fails if cocotb or iverilog is missing

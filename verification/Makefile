@@ -28,6 +28,10 @@ endef
 SMOKE_BUILD := $(ROOT)/sim_build/smoke
 SMOKE_LOG := $(SMOKE_BUILD)/smoke.log
 
+# The recording step probes both tool versions before it creates anything
+# under records/: a failed probe exits 1 and writes nothing, so the records
+# tree never gains a directory with no provenance.json (lint_records.py
+# rejects one, and the append-only rule makes hand-deleting it awkward).
 .PHONY: smoke
 smoke:
 	$(CHECK_COCOTB)
@@ -40,14 +44,14 @@ smoke:
 	    SIM_BUILD=$(SMOKE_BUILD) >$(SMOKE_LOG) 2>&1 \
 	    || { tail -40 $(SMOKE_LOG) >&2; exit 1; }
 	@set -e; \
+	cocotb_run=$$($(PYTHON_BIN) -c 'import cocotb;print(cocotb.__version__)' 2>/dev/null) \
+	    || { echo "cannot probe the running cocotb version: not recording" >&2; exit 1; }; \
+	iverilog_run=$$(iverilog -V 2>/dev/null | sed -n 's/^Icarus Verilog version \([^ ]*\) .*/\1/p'); \
+	[ -n "$$iverilog_run" ] || { echo "cannot probe the running iverilog version: not recording" >&2; exit 1; }; \
 	ts=$$(date -u +%Y%m%dT%H%M%SZ); sha=$$(git rev-parse HEAD); \
 	while [ -e $(ROOT)/records/smoke/$${ts}-$${sha} ]; do sleep 1; ts=$$(date -u +%Y%m%dT%H%M%SZ); done; \
 	rec=$(ROOT)/records/smoke/$${ts}-$${sha}; mkdir -p $$rec; \
 	cp $(SMOKE_LOG) $$rec/smoke.log.txt; \
 	cp $(SMOKE_BUILD)/results.xml $$rec/results.xml; \
-	cocotb_run=$$($(PYTHON_BIN) -c 'import cocotb;print(cocotb.__version__)' 2>/dev/null) \
-	    || { echo "cannot probe the running cocotb version: not recording" >&2; exit 1; }; \
-	iverilog_run=$$(iverilog -V 2>/dev/null | sed -n 's/^Icarus Verilog version \([^ ]*\) .*/\1/p'); \
-	[ -n "$$iverilog_run" ] || { echo "cannot probe the running iverilog version: not recording" >&2; exit 1; }; \
 	$(PYTHON_BIN) -c 'import json,sys; rec,sha,coc,iv=sys.argv[1:]; json.dump({"commit":sha,"pdk_revision":"n/a, no PDK used (RTL simulation only)","tool_versions":{"cocotb":coc,"iverilog":iv},"command":"make -C verification smoke"}, open(rec+"/provenance.json","w"), indent=2); print("record:", rec)' $$rec "$$sha" "$$cocotb_run" "$$iverilog_run"; \
 	echo "smoke: PASS (record $$rec)"
