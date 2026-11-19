@@ -72,6 +72,8 @@ measurements/  silicon characterization (empty until tape-out)
 rtl/           Verilog sources
 spec/          ratified spec + decision records
 verification/  cocotb testbenches
+WORK_LOG.md    merged PRs / closed issues (Guide-maintained)
+WORK_PLAN.md   backlog snapshot from label state (Guide-maintained)
 ```
 
 ## License
