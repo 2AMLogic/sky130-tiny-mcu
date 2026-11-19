@@ -1,0 +1,194 @@
+# Issue-filing lock (#6714)
+
+Every `gh issue create` in Loom goes through **one machine-wide lock**, so two
+issue-creating agents can never interleave their filing bursts.
+
+This document is the reference for the mechanism, its two tiers, its knobs, and
+the one boundary it deliberately does not pretend to cross.
+
+## Why a lock, and not a rule
+
+[#3707](https://github.com/rjwalters/loom/issues/3707) identified that parallel
+issue-creating agents race on `gh issue create` and cross-contaminate bodies. It
+shipped a **documentation-only** mitigation: *"Do not run concurrent Architects
+— serialize issue creation."*
+
+Seventeen days later, on **2026-08-08T02:49:04Z–02:49:23Z**, it happened anyway.
+Two Architects filing 5-issue bursts into **different** repos
+(`2AMLogic/gf180-sram` and `2AMLogic/sky130-modexp`) overlapped. gf180-sram's
+five bodies were overwritten with sky130-modexp's — one-directionally, off by
+one (sram #7 got modexp #6's body, sram #8 got modexp #7's, …). **Titles were
+unaffected**, so every issue looked plausible in its listing and nothing
+surfaced the problem for **13 days**. Three of the five were eventually closed
+`NOT_PLANNED`; two needed a human-authored body replacement; an operator triage
+pass read four of them as ordinary parked work and released them into the ready
+queue, where agents claimed them within minutes.
+
+The convention could not hold, for three structural reasons — none of which are
+operator error:
+
+1. **The in-progress guard is per-workspace.** `role_collision.rs`'s
+   `InProgressGuard` serializes `(root, role)` ticks. By construction it cannot
+   serialize an Architect in one repo against an Architect in another.
+2. **Concurrent cross-repo Architects are normal operation.** The daemon is the
+   scheduler and no human is in the loop at dispatch time, so "do not run
+   concurrent Architects" is not a thing an operator can comply with.
+3. **`IssueCreationMutex` is in-process.** `issue_creation_mutex.rs` (#3707's
+   own Phase-2 primitive) is a `tokio::sync::Mutex`. The agents that race are
+   separate OS processes spawned by `spawn-claude.sh`, so nothing it guards is
+   in the same address space as the `gh issue create` that actually races.
+
+## Where the lock lives
+
+The single acquire/release call site is
+[`create-issue.sh`](../scripts/create-issue.sh) — the single-sourced entry point
+every issue-creating role already goes through (Architect, Auditor,
+Curator-decomposition, Builder-decomposition, Doctor, Hermit, Judge). Filing
+through a bare `gh issue create` bypasses the lock **and** the GraphQL-exhaustion
+REST fallback (#5047); don't.
+
+Two halves implement the identical on-disk protocol, exactly like the
+[build slot](build-gate.md)'s `build_slot.rs` / `lib/build-slot.sh` pairing:
+
+| Half | Path | Used by |
+|---|---|---|
+| Bash | `defaults/scripts/lib/filing-lock.sh` | `create-issue.sh`, i.e. every agent |
+| Rust | `loom-daemon/src/filing_lock.rs` | the daemon |
+
+## Two tiers, and an honest boundary
+
+| Tier | Scope | Strength |
+|---|---|---|
+| **Host** | every workspace + every agent process on one machine | **hard** mutual exclusion (POSIX-atomic `mkdir`) |
+| **Fleet** | other hosts | the captain's filing slot (#13918) |
+
+The host tier is what actually closes the 2026-08-08 hazard: two processes can
+only overwrite each other's *body text* through shared memory or a shared
+filesystem, which means one machine. Note that "host-wide" is already strictly
+stronger than what failed — the gap #3707's mitigation left was
+*cross-workspace*, not cross-machine.
+
+The fleet tier covers the weaker, genuinely cross-host hazard #3707 also named:
+a burst binding the wrong freshly-minted issue **number** into a `Part of #N`
+cross-reference. It is the captain's single filing slot (below). It used to be
+a soft, TTL-bounded backoff: a filer published a `filing_lock` ad over the
+safehouse claims room and peers' daemons mirrored it to `<store>/peers/<host>`.
+That channel and its mirror were retired in #13945; a host not in fleet mode now
+serialises on the host tier only.
+
+One consequence of keying the host tier on `$HOME`: agents running in separate
+containers (the `loom-worker` image) each get their own store, so they serialize
+within a container, not across containers on the same physical host. Mount a
+shared `LOOM_FILING_LOCK_DIR` if you run several worker containers per host and
+want them to serialize; otherwise they fall back to the fleet tier, exactly like
+two separate machines.
+
+**The captain tier (#13918).** On a host in fleet mode (`fleetDispatch.enabled`),
+the fleet tier is also a real lock. After the host lock is taken, the filer asks
+the fleet-dispatch captain for its one filing slot (`POST /v1/filing-lock`) and
+gives it back with `POST /v1/filing-unlock`; two hosts filing at once serialise
+through the captain. In shell the call is `loom-daemon fleet-dispatch
+filing-lock acquire|release`, made by `lib/filing-lock.sh` after the host lock
+(it holds no logic of its own); in Rust it is `filing_lock::with_captain_tier`.
+
+- **Same identity and expiry as claims.** The caller is the tailnet `whois`
+  host, as for an assignment. The grant lives 60 s; the same holder id asking
+  again refreshes it, and only the same host *and* holder id may release it, so
+  a stale unlock never frees someone else's hold. The worker does not
+  auto-refresh a grant, so a burst still holding the slot past the TTL loses
+  it softly; a burst
+  of a handful of issues takes seconds, well inside the minute, but the bound
+  is derived from that pacing, not yet observed on a live fleet. A longer
+  burst can re-ask (`filing-lock acquire --holder <id>`) under the same id,
+  which refreshes.
+- **Bounded, fail-safe.** A slot still held at the end of
+  `LOOM_FILING_LOCK_WAIT_SECS` defers like the host lock (rc 75 for
+  `create-issue.sh`), and the host lock is handed back.
+- **Fail open, counted.** Captain unreachable, a non-2xx answer, or this host in
+  fleet-dispatch fallback: the burst files under the host lock and its existing
+  pacing. Each is a `loom.fleet_dispatch.call` span on `/v1/filing-lock` with
+  `result=error` (`reason` the failed call's token, or `fallback`); an older
+  captain answers `404`, the same path. On the shell path the subcommand is a
+  one-shot process, so it registers the standalone ops sink at startup and
+  flushes its queue once at exit (#14129) — without that setup the worker's
+  spans and log lines would be dropped, and the fail-open would be silent.
+  The `warn` line the fail-open logs (and the defer reason) reaches the
+  caller's stderr, since `_loom_filing_lock_captain_acquire` does not redirect
+  it (#14422); a granted acquire writes nothing there. The span is the signal
+  for a collector; the stderr line is the one for a host with no exporter.
+- **Soft state.** A captain restart empties the slot; a holder's next refresh
+  is granted again rather than wedging filing.
+- **Fleet mode off: unchanged.** No call is made.
+
+## Safety properties
+
+All four are load-bearing; each is covered by a test in
+`defaults/scripts/tests/test-filing-lock.sh` and `filing_lock.rs`'s test module.
+
+1. **A crashed holder cannot wedge fleet-wide issue creation.** Three
+   independent reap legs:
+   - the holder directory aging past `LOOM_FILING_LOCK_STALE_SECS`;
+   - an owner recorded on *this* host whose PID is not running — reaped
+     immediately (the same `live_claim` discipline the `loom:building` lease
+     uses). A PID number from *another* machine says nothing about a process
+     here, so it is never used for liveness;
+   - a peer hold aging past its own (shorter) TTL, so a peer that dies mid-burst
+     and never sends `filing_unlock` frees within a minute.
+2. **Bounded and fail-SAFE.** The wait is bounded; on expiry the filer
+   **defers** — exit code `75` (`EX_TEMPFAIL`), nothing filed, a log line saying
+   so, retry on the next tick. This is the one place the filing lock
+   deliberately does *not* copy `build-slot.sh`, which degrades open: an
+   unserialized build wastes CPU, an unserialized filing burst corrupts issue
+   bodies.
+3. **Degrades open only when there is no lock to take.** An unusable store (no
+   `$HOME`, a file in the way, no write permission) proceeds unserialized —
+   because a store nobody can write is a store nobody is serialized by, and
+   refusing would convert a corruption risk into a total filing outage.
+4. **Re-entrant.** `LOOM_FILING_LOCK_HELD` is exported to children, so a role
+   that wants to hold the lock across an *entire* burst can source
+   `lib/filing-lock.sh` and acquire once — the per-call acquire inside
+   `create-issue.sh` then becomes a no-op inside that hold.
+
+## On-disk protocol
+
+```text
+<store>/                  # ~/.loom/locks/issue-filing by default
+  holder/                 # the lock itself — mkdir-atomic
+    owner.json            # {"host","pid","label","acquired_at"}
+```
+
+`flock` is deliberately avoided (unavailable on stock macOS), matching the
+token-pool lock, the per-issue claim lock and the build slot.
+
+## Knobs
+
+Env-only, and identical on both halves (a knob with an independent Bash-side
+reader stays env-only rather than honoring `.loom/config.json` on one path and
+silently ignoring it on the other — the rule `LOOM_PER_WORKTREE_GB` followed
+while the daemon still read it, before #12406).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `LOOM_FILING_LOCK` | `1` | `0`/`false`/`off`/`no` disables serialization entirely |
+| `LOOM_FILING_LOCK_WAIT_SECS` | `120` | bounded wait before deferring |
+| `LOOM_FILING_LOCK_STALE_SECS` | `300` | age at which a holder is reaped |
+| `LOOM_FILING_LOCK_DIR` | `~/.loom/locks/issue-filing` | store location |
+| `LOOM_FILING_LOCK_LABEL` | `create-issue` | label recorded in `owner.json` |
+| `LOOM_FILING_LOCK_HELD` | unset | re-entrancy sentinel (set by the holder) |
+
+## What a role should do on exit code 75
+
+Stop filing. Say in your output that the burst was **deferred** and why. Do not
+retry in a tight loop, and do not work around the lock by calling `gh issue
+create` directly — filing unserialized is the exact behavior that corrupted five
+issues.
+
+## Known gap
+
+The corruption survived 13 days because **nothing looked**. A detection backstop
+— flagging an issue body whose content does not reference the repo it lives in
+(the Curator's own `git grep` test, mechanized at filing time) — is *not* part of
+this mechanism and is tracked in
+[#6771](https://github.com/rjwalters/loom/issues/6771). The lock prevents the
+corruption; the backstop would catch it if the lock ever has a gap — which is
+exactly how #3707's mitigation failed.
