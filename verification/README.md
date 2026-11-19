@@ -53,8 +53,9 @@ vendored:
 - `tools/lint_records.py` and its good/bad fixture test, verbatim
 - the `records/` layout and its `README.md` explanation
 - the CI shape: same triggers (`pull_request`, `merge_group`, `push: main`),
-  no path filters, per-entry merge-queue concurrency, `apt` iverilog +
-  venv cocotb at the pin
+  no path filters, per-entry merge-queue concurrency, iverilog built from
+  source at the pin + venv cocotb at the pin, and the environment verified
+  against both pins before anything runs
 
 Specific to this block:
 
@@ -75,8 +76,9 @@ queue entries and pushes to `main`:
 
 | Step | What it covers |
 | --- | --- |
-| `apt-get install -y iverilog` | Icarus from the runner image |
+| iverilog built from source at the pin | Icarus at `PIN_IVERILOG` from `../scripts/setup-env.sh` (tag `v<major>_<minor>`); the runner image's apt package is older than the pin |
 | venv + `pip install cocotb==PIN_COCOTB` | cocotb at the version pinned in `../scripts/setup-env.sh`, read from it |
+| `scripts/setup-env.sh --check` | the whole environment verified against both pins before anything runs; fails, never skips, on a mismatch |
 | without cocotb, `make smoke` must fail | the fail-not-skip guard, exercised against the runner's bare `python3` |
 | `make -C verification smoke` | the smoke test, on a clean checkout, writing a record |
 | `python3 -I verification/tools/lint_records.py` | the records tree (including the record the run just wrote) |

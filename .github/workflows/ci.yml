@@ -5,8 +5,11 @@ name: CI
 # - No path filters; a started main run is never cancelled.
 # - Each merge-queue entry gets its own concurrency group keyed on its head
 #   SHA, so a queued entry is never superseded while pending.
-# - Tools: Icarus Verilog from the runner image (apt), cocotb installed at the
-#   version pinned in scripts/setup-env.sh (the one pin source).
+# - Tools: Icarus Verilog built from source at the version pinned in
+#   scripts/setup-env.sh (the runner image's apt package is older than the
+#   pin), cocotb installed at the version pinned in the same file (the one
+#   pin source); the job verifies the environment against both pins before
+#   anything runs.
 # - PDK, synthesis and place-and-route legs do not exist yet; when added they
 #   stay local and recorded under verification/records/.
 on:
@@ -27,14 +30,31 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Install Icarus Verilog
-        run: sudo apt-get update && sudo apt-get install -y iverilog
+      - name: Install Icarus Verilog at the pinned version (source build)
+        run: |
+          pin="$(sed -n 's/^PIN_IVERILOG="\([^"]*\)".*/\1/p' scripts/setup-env.sh)"
+          test -n "$pin"
+          # Release tags follow v<major>_<minor>: pin 13.0 -> tag v13_0. A pin
+          # that does not map to a published tag fails here, visibly.
+          tag="v${pin//./_}"
+          sudo apt-get update
+          sudo apt-get install -y build-essential autoconf gperf flex bison libreadline-dev
+          git clone --depth 1 --branch "$tag" https://github.com/steveicarus/iverilog.git /tmp/iverilog-src
+          cd /tmp/iverilog-src
+          sh autoconf.sh
+          ./configure
+          make -j"$(nproc)"
+          sudo make install
       - name: Install cocotb at the pinned version
         run: |
           pin="$(sed -n 's/^PIN_COCOTB="\([^"]*\)".*/\1/p' scripts/setup-env.sh)"
           test -n "$pin"
           python3 -m venv .venv
           .venv/bin/pip install "cocotb==${pin}"
+      - name: Environment must match the pins
+        run: |
+          . .venv/bin/activate
+          scripts/setup-env.sh --check
       - name: Without cocotb the harness must fail, not skip
         run: |
           if make -C verification smoke >/tmp/no-cocotb.log 2>&1; then

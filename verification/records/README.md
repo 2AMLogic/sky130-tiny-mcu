@@ -15,8 +15,9 @@ records/<kind>/<timestamp>-<sha>/
 - `provenance.json` is a JSON object with non-empty values for: `commit` (full
   SHA), `pdk_revision` (the open_pdks revision, or an explicit
   `"n/a, no PDK used"` note while no record uses the PDK), `tool_versions`
-  (object, tool name to version, from `scripts/setup-env.sh`'s pins) and
-  `command` (the exact command that produced the record).
+  (object, tool name to version, probed from the tools that actually ran —
+  never copied from the pins in `scripts/setup-env.sh`) and `command` (the
+  exact command that produced the record).
 
 A re-run adds a new directory; it never edits or deletes an existing one.
 Records are committed to the repository, so the evidence trail travels with

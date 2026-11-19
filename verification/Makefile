@@ -14,7 +14,6 @@
 SIM ?= icarus
 export PYTHON_BIN ?= python3
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-PINS := $(ROOT)/../scripts/setup-env.sh
 
 # Guards, stated once and used as a recipe line: every cocotb target starts
 # with $(CHECK_COCOTB) and $(CHECK_IVERILOG). Fail, not skip.
@@ -46,7 +45,9 @@ smoke:
 	rec=$(ROOT)/records/smoke/$${ts}-$${sha}; mkdir -p $$rec; \
 	cp $(SMOKE_LOG) $$rec/smoke.log.txt; \
 	cp $(SMOKE_BUILD)/results.xml $$rec/results.xml; \
-	cocotb_pin=$$(sed -n 's/^PIN_COCOTB="\([^"]*\)".*/\1/p' $(PINS)); \
-	iverilog_pin=$$(sed -n 's/^PIN_IVERILOG="\([^"]*\)".*/\1/p' $(PINS)); \
-	$(PYTHON_BIN) -c 'import json,sys; rec,sha,coc,iv=sys.argv[1:]; json.dump({"commit":sha,"pdk_revision":"n/a, no PDK used (RTL simulation only)","tool_versions":{"cocotb":coc,"iverilog":iv},"command":"make -C verification smoke"}, open(rec+"/provenance.json","w"), indent=2); print("record:", rec)' $$rec "$$sha" "$$cocotb_pin" "$$iverilog_pin"; \
+	cocotb_run=$$($(PYTHON_BIN) -c 'import cocotb;print(cocotb.__version__)' 2>/dev/null) \
+	    || { echo "cannot probe the running cocotb version: not recording" >&2; exit 1; }; \
+	iverilog_run=$$(iverilog -V 2>/dev/null | sed -n 's/^Icarus Verilog version \([^ ]*\) .*/\1/p'); \
+	[ -n "$$iverilog_run" ] || { echo "cannot probe the running iverilog version: not recording" >&2; exit 1; }; \
+	$(PYTHON_BIN) -c 'import json,sys; rec,sha,coc,iv=sys.argv[1:]; json.dump({"commit":sha,"pdk_revision":"n/a, no PDK used (RTL simulation only)","tool_versions":{"cocotb":coc,"iverilog":iv},"command":"make -C verification smoke"}, open(rec+"/provenance.json","w"), indent=2); print("record:", rec)' $$rec "$$sha" "$$cocotb_run" "$$iverilog_run"; \
 	echo "smoke: PASS (record $$rec)"
