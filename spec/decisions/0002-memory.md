@@ -6,7 +6,7 @@
 - **Supersedes**: the README draft row "RAM: 256 bytes / Stretch: 1 KB" in
   its implementation-agnostic form; the 1 KB stretch is dropped.
 - **Superseded by**: none.
-- **Spec rows**: `spec/target-spec.md` § RAM, § Memory map.
+- **Spec rows**: `spec/target-spec.md` row 5 (RAM), § Memory map.
 
 ## Context
 
@@ -25,8 +25,11 @@ https://github.com/google/skywater-pdk via open_pdks.
 | D flip-flop `sky130_fd_sc_hd__dfxtp_1` area | 20.0192 µm² | `libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib`, `cell ("sky130_fd_sc_hd__dfxtp_1")` |
 | D latch `sky130_fd_sc_hd__dlxtp_1` area | 15.0144 µm² | same file, `cell ("sky130_fd_sc_hd__dlxtp_1")` |
 | NAND2 `sky130_fd_sc_hd__nand2_1` area | 3.7536 µm² | same file (basis for the GE→µm² re-reads in 0006) |
-| Smallest SRAM macro shipped | `sky130_sram_1kbyte_1rw1r_32x256_8`, LEF SIZE 479.78 × 397.5 µm = **190,712 µm² ≈ 0.191 mm²** | `libs.ref/sky130_sram_macros/lef/sky130_sram_1kbyte_1rw1r_32x256_8.lef` |
-| Next SRAM macro | `sky130_sram_2kbyte_1rw1r_32x512_8`, LEF SIZE 683.1 × 416.54 µm ≈ 0.285 mm² | `libs.ref/sky130_sram_macros/lef/sky130_sram_2kbyte_1rw1r_32x512_8.lef` |
+| SRAM macro `sram_1rw1r_32_256_8_sky130` (1 kB) | LEF SIZE 376.48 × 446.235 µm = **167,999 µm² ≈ 0.168 mm² — smallest shipped**; the only macro with corner `.lib` coverage (7 files: FF/SS/TT at 1p7/1p8/1p9 V, 0/25/100 °C; the other three ship one TT file each) | `libs.ref/sky130_sram_macros/lef/sram_1rw1r_32_256_8_sky130.lef`, `lib/` listing |
+| SRAM macro `sky130_sram_1kbyte_1rw1r_32x256_8` (1 kB) | LEF SIZE 479.78 × 397.5 µm = 190,712 µm² ≈ 0.191 mm² | `libs.ref/sky130_sram_macros/lef/sky130_sram_1kbyte_1rw1r_32x256_8.lef` |
+| SRAM macro `sky130_sram_1kbyte_1rw1r_8x1024_8` (1 kB) | LEF SIZE 455.3 × 446.46 µm ≈ 0.203 mm² | `libs.ref/sky130_sram_macros/lef/sky130_sram_1kbyte_1rw1r_8x1024_8.lef` |
+| SRAM macro `sky130_sram_2kbyte_1rw1r_32x512_8` (2 kB) | LEF SIZE 683.1 × 416.54 µm ≈ 0.285 mm² | `libs.ref/sky130_sram_macros/lef/sky130_sram_2kbyte_1rw1r_32x512_8.lef` |
+| SRAM macro inventory complete | the four rows above are the complete LEF listing of `libs.ref/sky130_sram_macros/lef/` — no fifth macro, none unlisted | directory listing, 2026-11-19 |
 | No ROM macro | `libs.ref/` contains `sky130_fd_io`, `sky130_fd_pr`, `sky130_fd_sc_hd`, `sky130_fd_sc_hvl`, `sky130_ml_xx_hd`, `sky130_sram_macros`; none is a ROM (also feeds record 0003) | directory listing, 2026-11-19 |
 
 Area arithmetic from the cell areas above (raw cell area; routing and
@@ -76,8 +79,9 @@ carried as a dead row.
 ## Alternatives considered
 
 - **SRAM macro** (1 KB `sky130_sram_1rw1r` or larger). Rejected with the
-  measured LEF sizes: the smallest shipped macro is 0.191 mm² — 1.9× the
-  entire AREA budget — and it is 4× the target capacity. The sibling repo's
+  measured LEF sizes: the smallest shipped macro
+  (`sram_1rw1r_32_256_8_sky130`) is 0.168 mm² — 1.68× the entire AREA
+  budget — and it is 4× the target capacity. The sibling repo's
   macro-based SoC can afford this because its budget is 3.8 mm²; this
   block's is 0.10 mm².
 - **Latch array at 256 B as the target.** Rejected for the target row, kept

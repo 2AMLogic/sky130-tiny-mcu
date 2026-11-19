@@ -6,7 +6,7 @@
 - **Supersedes**: the README draft row "Compliance: passes the RISC-V
   architectural tests for the implemented base" in its version-free form.
 - **Superseded by**: none.
-- **Spec rows**: `spec/target-spec.md` § Compliance.
+- **Spec rows**: `spec/target-spec.md` row 10 (Compliance).
 
 ## Context
 

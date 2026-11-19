@@ -6,7 +6,7 @@
 - **Supersedes**: the README draft row "Peripherals: one timer, one UART"
   in its unenumerated form.
 - **Superseded by**: none.
-- **Spec rows**: `spec/target-spec.md` § Peripherals, § Register map.
+- **Spec rows**: `spec/target-spec.md` row 8 (Peripherals), § Memory map.
 
 ## Context
 
@@ -38,7 +38,8 @@ commit, record 0001):
    divisor; the RX line level is readable as one status bit so software can
    measure the incoming bit period with the timer **before** a divisor is
    programmed (host auto-baud, runtime). TX/RX are polled; the UART raises
-   no interrupt.
+   no interrupt. TX pacing is by the **tx-ready status bit** (below), so
+   polled TX never needs open-loop timing against an uncalibrated clock.
 3. **GPIO: 4 bits** (the post-boot flash pins of record 0005), per-pin
    output enable, output register, input register with a 2-FF synchronizer.
    No per-pin interrupts.
@@ -49,7 +50,7 @@ commit, record 0001):
    | Offset | Block | Register | Width | Notes |
    |---|---|---|---|---|
    | `0x4000_0000` | UART | `DATA` | 8 | write = TX byte, read = RX byte (RX overruns lost) |
-   | `0x4000_0004` | UART | `STATUS` | 2 | bit0 rx level (auto-baud), bit1 rx byte ready |
+   | `0x4000_0004` | UART | `STATUS` | 3 | bit0 rx level (auto-baud), bit1 rx byte ready, bit2 tx ready (shift register idle — write `DATA` only when set) |
    | `0x4000_0008` | UART | `DIVISOR` | 16 | system-clock cycles per bit |
    | `0x4000_0100` | timer | `COUNT` | 32 | free-running, read-only |
    | `0x4000_0104` | timer | `COMPARE` | 32 | match ⇒ `i_timer_irq` until next write |
@@ -57,7 +58,7 @@ commit, record 0001):
    | `0x4000_0204` | GPIO | `OE` | 4 | 1 = output |
    | `0x4000_0208` | GPIO | `IN` | 4 | synchronized inputs |
 
-   (Offsets are word-addressed; this is the contract the cocotb
+   (Offsets are word-aligned byte offsets; this is the contract the cocotb
    peripheral testbenches and the firmware build are written against.)
 5. **Deliberately absent** — each absence is the area decision:
    - **Watchdog / second timer** — any WDT is a second timer; the block's

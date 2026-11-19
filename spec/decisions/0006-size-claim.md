@@ -6,7 +6,7 @@
 - **Supersedes**: the README draft row "AREA: ≤ 0.10 mm² core, RAM included
   / Stretch: ≤ 0.05 mm²" in its method-free form.
 - **Superseded by**: none.
-- **Spec rows**: `spec/target-spec.md` § AREA, § Measurement method.
+- **Spec rows**: `spec/target-spec.md` row 12 (AREA).
 
 ## Context
 

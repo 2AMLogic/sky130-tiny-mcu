@@ -43,7 +43,10 @@ meaningful), a verification method, and its decision record.
 
 Pins 1–2 are supply; pins 3–6 carry the boot-time flash interface and
 become GPIOs when the boot FSM releases them; pin 7 doubles as the boot
-strap. Full table and rationale: record 0005.
+strap. Reset is generated on-chip — no reset pin exists: a ROSC-clocked
+release counter holds the part in reset for its first 256 ROSC cycles, and
+`uart_rx` is sampled once at reset exit (record 0005 § Decision 6). Full
+table and rationale: record 0005.
 
 | Pin | Signal | Boot | After release | Reset strap |
 |---|---|---|---|---|

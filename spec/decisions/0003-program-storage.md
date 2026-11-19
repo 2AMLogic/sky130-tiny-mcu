@@ -7,7 +7,7 @@
   SPI flash / Stretch: optional mask ROM"; the mask-ROM stretch is dropped
   with its cost stated.
 - **Superseded by**: none.
-- **Spec rows**: `spec/target-spec.md` § Program storage, § Boot.
+- **Spec rows**: `spec/target-spec.md` row 6 (Program storage).
 
 ## Context
 
@@ -35,7 +35,8 @@ program + 4 GPIOs**, which is exactly what a copy-boot gives.
 
 ## Decision
 
-1. **Target: hardware copy-boot from external SPI flash.** At reset exit, a
+1. **Target: hardware copy-boot from external SPI flash.** At reset exit
+   (the instant defined in record 0005 § Decision 6), a
    small boot FSM issues one `03h` READ of the full 256 B RAM image from
    flash address `0x000000` into the RAM of record 0002 (mode 0: CPOL=0,
    CPHA=0), deasserts CS, and only then releases the core from reset
