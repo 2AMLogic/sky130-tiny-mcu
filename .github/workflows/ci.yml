@@ -31,12 +31,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Judge the actual commit under test with its history, not the
-          # ephemeral shallow merge ref actions/checkout produces by default:
-          # on a depth-1 merge tip the file history is grafted away, and a
-          # clean merge tip hides a file inherited from one parent. Issue #11
-          # measured the stamp guard pass vacuously on both shapes.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Keep the default pull_request checkout: the refs/pull/N/merge
+          # tip, so smoke (the repo's only CI job) verifies the base+head
+          # merge result before it lands. Full history is what the stamp
+          # guard below needs — it judges
+          # `git log <base>..HEAD -- WORK_PLAN.md`, which must traverse
+          # merge topology, and refuses a shallow clone outright.
           fetch-depth: 0
       - name: Install Icarus Verilog at the pinned version (source build)
         run: |
