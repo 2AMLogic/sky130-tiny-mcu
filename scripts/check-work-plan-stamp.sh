@@ -27,7 +27,9 @@
 # - Skip when WORK_PLAN.md is absent at HEAD or has no `_Generated:` line
 #   (pre-#13909 format or empty generated region).
 # - Skip when no commit in the range changes WORK_PLAN.md: an older,
-#   already-merged stamp is not re-judged by a range that does not contain it.
+#   already-merged stamp is not re-judged by a range that does not contain
+#   it. That gate runs BEFORE the well-formedness checks (issue #15), so the
+#   not-re-judged rule holds for the count, format and instant branches too.
 # - Compare the stamp against that commit's committer date, so a merge tip
 #   whose WORK_PLAN.md is inherited unchanged is judged against the commit
 #   that authored the stamp, not GitHub's clock.
@@ -37,7 +39,8 @@
 # - Compare as UTC instants (epoch seconds); a stamp equal to the commit
 #   date passes.
 # - A `_Generated:` line that is not a well-formed UTC instant stamp fails,
-#   as do multiple stamp lines.
+#   as do multiple stamp lines — but only when the judged range contains a
+#   WORK_PLAN.md commit; the range gate above runs first (issue #15).
 #
 # Exit codes: 0 pass or skip; 1 stamp ahead of the commit or malformed stamp;
 # 2 environmental error (not a git checkout, shallow clone — the commit under
@@ -80,6 +83,19 @@ if ! head_plan="$(git show HEAD:WORK_PLAN.md 2>/dev/null)"; then
   exit 0
 fi
 
+# The judged-range gate precedes the well-formedness checks (issue #15): a
+# stamp the range did not introduce is never judged — not for count, format,
+# instant validity or postdating. Stamps a range commit did write are still
+# judged by every branch below.
+if ! commit_epoch="$(git log -1 --format=%ct "$range_spec" -- WORK_PLAN.md 2>/dev/null)"; then
+  echo "check-work-plan-stamp: git log over $range_desc failed" >&2
+  exit 2
+fi
+if [[ -z "$commit_epoch" ]]; then
+  echo "check-work-plan-stamp: skip (no commit in $range_desc changes WORK_PLAN.md)"
+  exit 0
+fi
+
 count="$(grep -c '^_Generated:' <<<"$head_plan" || true)"
 if [[ "$count" -eq 0 ]]; then
   echo "check-work-plan-stamp: skip (no _Generated: stamp line)"
@@ -99,15 +115,6 @@ stamp_epoch="$(date -u -d "$instant" +%s 2>/dev/null)" || {
   echo "check-work-plan-stamp: FAIL (_Generated: stamp is not a real instant: $instant)" >&2
   exit 1
 }
-
-if ! commit_epoch="$(git log -1 --format=%ct "$range_spec" -- WORK_PLAN.md 2>/dev/null)"; then
-  echo "check-work-plan-stamp: git log over $range_desc failed" >&2
-  exit 2
-fi
-if [[ -z "$commit_epoch" ]]; then
-  echo "check-work-plan-stamp: skip (no commit in $range_desc changes WORK_PLAN.md)"
-  exit 0
-fi
 
 if (( stamp_epoch > commit_epoch )); then
   echo "check-work-plan-stamp: FAIL (_Generated: $instant postdates the commit carrying it ($(date -u -d "@$commit_epoch" +%Y-%m-%dT%H:%M:%SZ)); a stamp cannot be emitted after the commit that contains it — see issue #11)" >&2

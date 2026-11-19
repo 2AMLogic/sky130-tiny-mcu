@@ -11,6 +11,9 @@
 # merge tip inside the judged range (exit 1 — the combined-diff skip), a
 # violation outside the judged range (skip — an already-merged stamp is not
 # re-judged), and a dirty working tree (the stamp is read from HEAD's blob).
+# Cases 17-20 pin issue #15's ordering: the judged-range gate precedes the
+# well-formedness checks, so a malformed or duplicated stamp the range did
+# not introduce skips instead of failing.
 set -euo pipefail
 export LC_ALL=C
 
@@ -241,6 +244,46 @@ write_plan "$r" 2026-11-19T08:55:00Z
 commit_at "$r" 2026-11-19T09:00:00Z "plan with compliant stamp"
 printf '# Work Plan\n\n_Generated: 2026-11-19T23:59:00Z (snapshot; compare against live labels)_\n' >"$r/WORK_PLAN.md"
 run_case 0 "dirty working tree does not affect the judgment (stamp read from HEAD's blob)" "$r"
+
+# 17. Malformed stamp (suffix differs from the pinned regex) OUTSIDE the
+#     judged range: skips. Issue #15: an older, already-merged stamp is not
+#     re-judged at all — the well-formedness branches must not fire for a
+#     stamp the range did not introduce.
+r="$work/malformed-out-of-range"
+new_repo "$r"
+printf '# Work Plan\n\n_Generated: 2026-11-19T07:00:00Z (snapshot)_\n' >"$r/WORK_PLAN.md"
+commit_at "$r" 2026-11-19T09:00:00Z "plan with malformed stamp"
+printf 'other\n' >"$r/OTHER.md"
+commit_at "$r" 2026-11-19T10:00:00Z "touch other file only"
+bad="$(git -C "$r" rev-parse HEAD~1)"
+run_case 0 "malformed stamp outside the judged range skips (not re-judged)" "$r" "$bad"
+
+# 18. The same malformed stamp introduced INSIDE the judged range (full
+#     history): still fails with the malformed branch.
+r="$work/malformed-in-range"
+new_repo "$r"
+printf '# Work Plan\n\n_Generated: 2026-11-19T07:00:00Z (snapshot)_\n' >"$r/WORK_PLAN.md"
+commit_at "$r" 2026-11-19T09:00:00Z "plan with malformed stamp"
+run_case 1 "malformed stamp introduced inside the judged range fails" "$r"
+
+# 19. Duplicate _Generated: stamp lines (count > 1) inside the judged range:
+#     fails. Pins the count branch the PR body claimed but never fixtured.
+r="$work/duplicate-in-range"
+new_repo "$r"
+printf '# Work Plan\n\n_Generated: 2026-11-19T08:00:00Z (snapshot; compare against live labels)_\n_Generated: 2026-11-19T08:30:00Z (snapshot; compare against live labels)_\n' >"$r/WORK_PLAN.md"
+commit_at "$r" 2026-11-19T09:00:00Z "plan with duplicate stamp"
+run_case 1 "duplicate _Generated: stamp lines inside the judged range fail" "$r"
+
+# 20. Duplicate stamp lines OUTSIDE the judged range: skips — same rule as
+#     case 17, for the count branch.
+r="$work/duplicate-out-of-range"
+new_repo "$r"
+printf '# Work Plan\n\n_Generated: 2026-11-19T08:00:00Z (snapshot; compare against live labels)_\n_Generated: 2026-11-19T08:30:00Z (snapshot; compare against live labels)_\n' >"$r/WORK_PLAN.md"
+commit_at "$r" 2026-11-19T09:00:00Z "plan with duplicate stamp"
+printf 'other\n' >"$r/OTHER.md"
+commit_at "$r" 2026-11-19T10:00:00Z "touch other file only"
+bad="$(git -C "$r" rev-parse HEAD~1)"
+run_case 0 "duplicate _Generated: stamp lines outside the judged range skip (not re-judged)" "$r" "$bad"
 
 echo
 echo "check-work-plan-stamp fixture test: $pass passed, $fail failed"
