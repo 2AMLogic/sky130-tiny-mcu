@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1795067939" />
+    <testcase name="counter_counts" classname="test_smoke" file="/home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-2/verification/tests/smoke/test_smoke.py" lineno="11" time="0.0008645057678222656" sim_time_ns="70.0" ratio_time="80971.11969111969" />
+  </testsuite>
+</testsuites>

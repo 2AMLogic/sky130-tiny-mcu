@@ -1,0 +1,1 @@
+{"commit":"0123456789ab","pdk_revision":"n/a, no PDK used (RTL simulation only)","tool_versions":{"cocotb":"2.0.1","iverilog":"13.0"},"command":"make -C verification smoke"}
