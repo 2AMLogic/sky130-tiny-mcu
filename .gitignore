@@ -9,6 +9,8 @@ __pycache__/
 flow/build/
 # local klt install, created by the setup script
 .venv/
+# cocotb/Icarus simulation scratch (verification/Makefile)
+verification/sim_build/
 # >>> loom-managed (do not edit) >>>
 # Loom runtime state (don't commit these)
 .loom-in-use
