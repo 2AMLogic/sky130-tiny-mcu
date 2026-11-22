@@ -11,6 +11,10 @@ _None yet._
 
 ### 2026-11-22
 
+- **PR #29**: fix: pin the klayout engine exactly and fail --check-flow when it drifts
+- **PR #27**: fix: reject legacy YYYY-MM-DD record dirs in records linter
+- **Issue #26** (closed): Pin the klayout engine version exactly, not just a floor: flow-smoke ran 0.30.13 against a klt build tested on 0.30.12
+- **Issue #23** (closed): Remove legacy YYYY-MM-DD record branch from verification/tools/lint_records.py: dead sibling carryover that bypasses provenance.json
 - **PR #28**: fix: fail flow-smoke LVS gate on unchecked power-connectivity pins
 - **PR #24**: feat: run the smoke DUT through klt synthesize/P&R/STA/DRC/LVS/ERC, recorded
 - **PR #22**: chore(loom): resync installed Loom to v0.20.8 (clears the dispatch hold)
