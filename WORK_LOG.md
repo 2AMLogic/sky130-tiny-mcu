@@ -9,6 +9,14 @@ _None yet._
 
 ## Log
 
+### 2026-11-22
+
+- **PR #28**: fix: fail flow-smoke LVS gate on unchecked power-connectivity pins
+- **PR #24**: feat: run the smoke DUT through klt synthesize/P&R/STA/DRC/LVS/ERC, recorded
+- **PR #22**: chore(loom): resync installed Loom to v0.20.8 (clears the dispatch hold)
+- **Issue #25** (closed): flow-smoke LVS gate passes while a declared power-connectivity expectation goes unverified (unchecked_expected_pins)
+- **Issue #21** (closed): Bootstrap the implementation-flow harness: run the smoke DUT through klt synthesize, place-and-route, STA, DRC, LVS and ERC, and record it
+
 ### 2026-11-19
 
 - **Issue #14** (closed): CI: the smoke job now verifies the PR head, not the merge result — decide that deliberately and fix the stale rationale

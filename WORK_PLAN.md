@@ -6,7 +6,7 @@ The body below is a snapshot of GitHub label state as of the last merged docs-ma
 
 <!-- Maintained automatically by the Guide triage agent. Manual edits are fine but may be overwritten. -->
 <!-- guide:plan-body:start -->
-_Generated: 2026-11-19T10:13:03Z (snapshot; compare against live labels)_
+_Generated: 2026-11-22T21:16:02Z (snapshot; compare against live labels)_
 ## Operator Attention: Merge-Risk-Hold Pileup
 
 Judge-approved PRs under a hold (`loom:blocked` or `loom:operator`) — only a human merge decision is missing.
@@ -36,26 +36,28 @@ _None._
 Issues currently being built (`loom:building`).
 
 - **#1**: Draft and ratify the target spec
-- **#15**: WORK_PLAN stamp guard: malformed/duplicate-stamp checks ignore the judged range, and main still carries a violating stamp
+- **#23**: Remove legacy YYYY-MM-DD record branch from verification/tools/lint_records.py: dead sibling carryover that bypasses provenance.json
+- **#26**: Pin the klayout engine version exactly, not just a floor: flow-smoke ran 0.30.13 against a klt build tested on 0.30.12
 
 ## PRs Awaiting Review
 
 PRs waiting on Judge (`loom:review-requested`).
 
-- **#16**: fix: judge WORK_PLAN stamp range gate before well-formedness checks
+- **#29**: fix: pin the klayout engine exactly and fail --check-flow when it drifts
 
 ## Approved (Awaiting Merge)
 
 PRs that passed review and are queued for Champion auto-merge (`loom:pr`).
 
 - **#6**: spec: draft target table and seven decision records — closes #1
+- **#27**: fix: reject legacy YYYY-MM-DD record dirs in records linter — closes #23
 
 ## Proposed
 
 Issues carrying `loom:curated`.
 
 - **#1**: Draft and ratify the target spec *(curated)*
-- **#15**: WORK_PLAN stamp guard: malformed/duplicate-stamp checks ignore the judged range, and main still carries a violating stamp *(curated)*
+- **#26**: Pin the klayout engine version exactly, not just a floor: flow-smoke ran 0.30.13 against a klt build tested on 0.30.12 *(curated)*
 
 ## Proposed (Architect / Hermit)
 
@@ -73,9 +75,9 @@ _None._
 | Very important | 0 |
 | Important | 0 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
-| In Progress (`loom:building`) | 2 |
+| In Progress (`loom:building`) | 3 |
 | PRs awaiting review | 1 |
-| Approved PRs awaiting merge | 1 |
+| Approved PRs awaiting merge | 2 |
 | Curated | 2 |
 | Architect / Hermit proposals | 1 |
 | Active epics | 0 |
