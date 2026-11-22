@@ -9,9 +9,7 @@ JSON object with the keys commit, pdk_revision, tool_versions, command.
 `pdk_revision` may hold an explicit "n/a, no PDK used" note; it must still be
 present and non-empty.
 
-Records that predate this layout are named `YYYY-MM-DD` and must carry a
-README.md instead; the date form is accepted only for them and is not for new
-records. An absent or empty records tree passes. Stdlib only. Exit 1 on any
+An absent or empty records tree passes. Stdlib only. Exit 1 on any
 problem.
 """
 import json
@@ -21,7 +19,6 @@ from pathlib import Path
 
 REQUIRED_KEYS = ("commit", "pdk_revision", "tool_versions", "command")
 NEW_NAME = re.compile(r"^\d{8}T\d{6}Z-[0-9a-f]{7,40}$")
-LEGACY_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def lint_record(rec: Path) -> list[str]:
@@ -39,11 +36,7 @@ def lint_record(rec: Path) -> list[str]:
         errs += [f"{prov}: key '{k}' is empty" for k in REQUIRED_KEYS
                  if k in data and data[k] in ("", None, [], {})]
         return errs
-    if LEGACY_NAME.match(rec.name):
-        if not (rec / "README.md").is_file():
-            return [f"{rec}: legacy record has no README.md"]
-        return []
-    return [f"{rec}: name must be <YYYYMMDDTHHMMSSZ>-<sha> (legacy: YYYY-MM-DD)"]
+    return [f"{rec}: name must be <YYYYMMDDTHHMMSSZ>-<sha>"]
 
 
 def lint_tree(root: Path) -> list[str]:

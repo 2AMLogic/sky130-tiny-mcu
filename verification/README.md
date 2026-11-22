@@ -84,7 +84,9 @@ vendored:
   results file under it), with `CHECK_COCOTB` as a fail-not-skip guard
 - `scripts/setup-env.sh` as the single pin source, read by CI with the same
   `sed` extraction of `PIN_*`
-- `tools/lint_records.py` and its good/bad fixture test, verbatim
+- `tools/lint_records.py` and its good/bad fixture test, minus the sibling's
+  legacy `YYYY-MM-DD` record exemption (this repo has no records predating
+  the `<timestamp>-<sha>` + `provenance.json` layout)
 - the `records/` layout and its `README.md` explanation
 - the CI shape: same triggers (`pull_request`, `merge_group`, `push: main`),
   no path filters, per-entry merge-queue concurrency, iverilog built from

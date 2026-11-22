@@ -39,13 +39,15 @@ class LintRecords(unittest.TestCase):
             self.assertEqual(run(d).returncode, 1)
             self.assertIn("missing provenance.json", run(d).stderr)
 
-    def test_legacy_record_needs_readme(self):
+    def test_date_only_dir_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             rec = Path(d) / "kind" / "2026-10-17"
             rec.mkdir(parents=True)
             self.assertEqual(run(d).returncode, 1)
             (rec / "README.md").write_text("x")
-            self.assertEqual(run(d).returncode, 0)
+            r = run(d)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("name must be <YYYYMMDDTHHMMSSZ>-<sha>", r.stderr)
 
 
 if __name__ == "__main__":
