@@ -6,7 +6,7 @@ The body below is a snapshot of GitHub label state as of the last merged docs-ma
 
 <!-- Maintained automatically by the Guide triage agent. Manual edits are fine but may be overwritten. -->
 <!-- guide:plan-body:start -->
-_Generated: 2026-11-22T21:16:02Z (snapshot; compare against live labels)_
+_Generated: 2026-11-22T22:16:07Z (snapshot; compare against live labels)_
 ## Operator Attention: Merge-Risk-Hold Pileup
 
 Judge-approved PRs under a hold (`loom:blocked` or `loom:operator`) — only a human merge decision is missing.
@@ -36,28 +36,27 @@ _None._
 Issues currently being built (`loom:building`).
 
 - **#1**: Draft and ratify the target spec
-- **#23**: Remove legacy YYYY-MM-DD record branch from verification/tools/lint_records.py: dead sibling carryover that bypasses provenance.json
-- **#26**: Pin the klayout engine version exactly, not just a floor: flow-smoke ran 0.30.13 against a klt build tested on 0.30.12
+- **#32**: flow-smoke's recorded netlist_sha256 is not reproducible across two runs at the same pinned Yosys version
 
 ## PRs Awaiting Review
 
 PRs waiting on Judge (`loom:review-requested`).
 
-- **#29**: fix: pin the klayout engine exactly and fail --check-flow when it drifts
+_None._
 
 ## Approved (Awaiting Merge)
 
 PRs that passed review and are queued for Champion auto-merge (`loom:pr`).
 
 - **#6**: spec: draft target table and seven decision records — closes #1
-- **#27**: fix: reject legacy YYYY-MM-DD record dirs in records linter — closes #23
+- **#33**: flow-smoke: pair netlist_sha256 with a banner-normalised hash; record the banner-cause finding — closes #32
 
 ## Proposed
 
 Issues carrying `loom:curated`.
 
 - **#1**: Draft and ratify the target spec *(curated)*
-- **#26**: Pin the klayout engine version exactly, not just a floor: flow-smoke ran 0.30.13 against a klt build tested on 0.30.12 *(curated)*
+- **#32**: flow-smoke's recorded netlist_sha256 is not reproducible across two runs at the same pinned Yosys version *(curated)*
 
 ## Proposed (Architect / Hermit)
 
@@ -75,8 +74,8 @@ _None._
 | Very important | 0 |
 | Important | 0 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
-| In Progress (`loom:building`) | 3 |
-| PRs awaiting review | 1 |
+| In Progress (`loom:building`) | 2 |
+| PRs awaiting review | 0 |
 | Approved PRs awaiting merge | 2 |
 | Curated | 2 |
 | Architect / Hermit proposals | 1 |
