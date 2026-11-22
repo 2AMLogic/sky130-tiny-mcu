@@ -40,7 +40,11 @@ pass because of a klayout-tools gap stays failing with the envelope recorded
     sta              timing_status == "constrained", worst_slack_ns >= 0,
                      worst_hold_slack_ns >= 0 when non-null
     drc              status == "clean", violation_count == 0
-    lvs              status == "match", power_connectivity.status == "match"
+    lvs              status == "match", power_connectivity.status == "match",
+                     power_connectivity.unchecked_expected_pins empty (a
+                     declared power expectation that resolved zero rows is a
+                     failure, not a pass; an absent key fails too -- the
+                     pinned klt always emits the field)
     erc              erc_status == "clean", a nets[] row named "VDD" and one
                      named "VSS" each with matched_islands == 1 (output rows
                      key on name and do not echo kind), the tie work id
@@ -140,6 +144,16 @@ def grade_envelope(verb: str, env: dict) -> list[str]:
             bad("power_connectivity.status",
                 f"got {pc.get('status')!r}, want \"match\""
                 + (f" (reason: {pc.get('reason')})" if pc.get("reason") else ""))
+        unchecked = pc.get("unchecked_expected_pins")
+        if not isinstance(unchecked, list):
+            bad("power_connectivity.unchecked_expected_pins",
+                f"got {unchecked!r}, want a list of pins -- without it the gate "
+                "cannot tell checked from unchecked (the pinned klt always emits it)")
+        elif unchecked:
+            bad("power_connectivity.unchecked_expected_pins",
+                f"{len(unchecked)} expected pin(s) went unchecked (declared in "
+                "expected_nets but resolved zero rows -- the check could not "
+                "run, which is not a pass): " + ", ".join(str(x) for x in unchecked))
     elif verb == "erc":
         if env.get("erc_status") != "clean":
             bad("erc_status", f"got {env.get('erc_status')!r}, want \"clean\"")
