@@ -1,11 +1,18 @@
 # Single runner entry point for the cocotb + Icarus harness.
 #
-#   make -C verification smoke   harness smoke test on tests/smoke/ (a trivial
-#                                counter DUT, not design RTL), recorded under
-#                                records/smoke/
+#   make -C verification smoke        harness smoke test on tests/smoke/ (a
+#                                     trivial counter DUT, not design RTL),
+#                                     recorded under records/smoke/
+#   make -C verification flow-smoke   run the smoke DUT through the six
+#                                     implementation-flow verbs (synthesize,
+#                                     place-and-route, sta, drc, lvs, erc)
+#                                     via the pinned klt, gated and recorded
+#                                     under records/flow-smoke/. Toolchain
+#                                     evidence on a smoke DUT only -- no
+#                                     design claim, no block manifest.
 #
 # Copied by pattern from sky130-riscv-soc's verification/Makefile (source
-# commit in verification/README.md), cut down to the single target this block
+# commit in verification/README.md), cut down to the targets this block
 # needs while it has no design RTL yet. A new test directory under
 # tests/<name>/ adds a target the same way.
 # Needs cocotb (pinned in ../scripts/setup-env.sh) and iverilog on PATH.
@@ -55,3 +62,14 @@ smoke:
 	cp $(SMOKE_BUILD)/results.xml $$rec/results.xml; \
 	$(PYTHON_BIN) -c 'import json,sys; rec,sha,coc,iv=sys.argv[1:]; json.dump({"commit":sha,"pdk_revision":"n/a, no PDK used (RTL simulation only)","tool_versions":{"cocotb":coc,"iverilog":iv},"command":"make -C verification smoke"}, open(rec+"/provenance.json","w"), indent=2); print("record:", rec)' $$rec "$$sha" "$$cocotb_run" "$$iverilog_run"; \
 	echo "smoke: PASS (record $$rec)"
+
+# The implementation-flow smoke run: request-driven through the pinned klt
+# (see ../flow/smoke/), gated on the six envelopes, recorded append-only.
+# The guard is the flow pin check -- PDK revision, klt, Yosys, OpenROAD --
+# which fails, never skips, on any mismatch or absence; it needs the
+# cold-start venv active for the cocotb pin. Heavy tools run here, not in
+# hosted CI (see README.md, "What CI runs").
+.PHONY: flow-smoke
+flow-smoke:
+	@cd $(ROOT)/.. && scripts/setup-env.sh --check-flow
+	@cd $(ROOT)/.. && $(PYTHON_BIN) -I verification/tools/run_flow_smoke.py

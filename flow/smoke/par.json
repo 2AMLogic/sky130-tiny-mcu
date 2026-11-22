@@ -1,0 +1,34 @@
+{
+  "schema": "klt.place_and_route.request/1",
+  "engine": "openroad",
+  "netlist": "../build/smoke/synth/smoke_synth.v",
+  "hdl_toplevel": "smoke",
+  "pdk": { "cell_library": "sky130_fd_sc_hd", "corner": "tt_025C_1v80" },
+  "floorplan": {
+    "method": "explicit",
+    "die_area_um": [0, 0, 60, 60],
+    "core_area_um": [10, 10, 50, 50],
+    "site": "unithd"
+  },
+  "io": {
+    "layer_h": "met3",
+    "layer_v": "met2"
+  },
+  "power": {
+    "power_net": "VDD",
+    "ground_net": "VSS",
+    "straps": [
+      { "layer": "met1", "width_um": 0.48, "pitch_um": 5.44, "offset_um": 0, "followpins": true },
+      { "layer": "met4", "width_um": 1.6, "pitch_um": 27.14, "offset_um": 13.57 },
+      { "layer": "met5", "width_um": 1.6, "pitch_um": 27.2, "offset_um": 13.6 }
+    ]
+  },
+  "constraints": {
+    "clock_port": "clk",
+    "clock_period_ns": 20.0
+  },
+  "seed": 1,
+  "target_stage": "route",
+  "portable_paths": true,
+  "outputs": { "dir": "../build/smoke/pnr" }
+}

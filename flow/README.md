@@ -42,3 +42,37 @@ is wired up; the `power` block itself needs no per-block edits. Gates 2
 and 3 still need their own requests — a `klt lvs` request with
 `reference.form: "gate-level-verilog"` and `options.power_connectivity`,
 and a `klt erc` supply spec — once there is a routed layout to check.
+
+## The smoke flow run (`smoke/`)
+
+All three gates are exercised end to end today on the smoke DUT — not
+design RTL — by [`smoke/`](smoke/) (its README states the requests and
+that every number in them is arbitrary toolchain-bring-up value, not a
+design target):
+
+```
+make -C verification flow-smoke
+```
+
+synthesizes `verification/tests/smoke/smoke.v`, places and routes it to
+`target_stage: "route"` with the `power` block above carried unchanged,
+then times, DRC-checks, LVS-checks (gates 2) and ERC-checks (gate 3) the
+result through the pinned `klt`, failing unless every gate passes and
+recording the six JSON envelopes under
+`verification/records/flow-smoke/`. That record is toolchain evidence on
+a smoke DUT: it is not cited in any block manifest and claims nothing
+about the design. One sizing note for anyone reusing the pattern: the
+met5 strap in the default `power` block (pitch 27.2 um) needs a core of
+at least ~28.8 um on each side, so `smoke/par.json` uses an explicit
+60x60 um die / 40x40 um core rather than a utilization-sized floorplan —
+an 8-flip-flop counter at a normal utilization produces a core too small
+for the default PDN.
+
+`smoke/erc.json`'s `nwell_tap` tie affirms `tap_is_dedicated` on layer
+`65/44` (sky130's `tap.drawing`, drawn only by tap cells — ordinary
+cells draw their source/drain diffusion on `65/20`): a `tap_requires`
+intersection with the `93/44` marker removes nothing (every cell draws it
+over its diffusion) and `klt erc` correctly refuses the unfalsifiable
+declaration as `degenerate_tap_declaration` — the first flow-smoke record
+under `verification/records/flow-smoke/` shows exactly that skip before
+the spec was corrected.
