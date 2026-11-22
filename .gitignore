@@ -7,6 +7,8 @@ __pycache__/
 
 # synthesis / P&R scratch
 flow/build/
+# klt run scratch written next to request files (klt sta's .klt/sta)
+.klt/
 # local klt install, created by the setup script
 .venv/
 # cocotb/Icarus simulation scratch (verification/Makefile)

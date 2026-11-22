@@ -49,10 +49,26 @@
     "                         (klayout-tools' own pyproject.toml pins a",
     "                         floor of its own; recorded here so a drift",
     "                         in *this* repo's pin is visible next to",
-    "                         klt's)."
+    "                         klt's).",
+    "",
+    "CORRECTION (issue #21, 2026-11-22): the paragraph above and the",
+    "klt_install field reference predate klayout-tools' PyPI releases.",
+    "There IS a PyPI release today: klayout-tools 0.9.2 (tag v0.9.2 at",
+    "commit 046ba74652fc096bd97071fc3237f7159dd40183, released",
+    "2026-11-14) ships every verb this repo's flow uses -- synthesize,",
+    "place-and-route, sta, drc, lvs, erc, including the power-delivery",
+    "audit and the ERC ties model. The pin is therefore the PyPI release",
+    "name `klayout-tools==0.9.2` (installed via",
+    "`uvx --from klayout-tools==0.9.2` or into the cold-start .venv), the",
+    "same form and version the sibling sky130-riscv-soc pins at b201244.",
+    "scripts/setup-env.sh (PIN_KLT) states the same pin and resolves the",
+    "exact binary for each runner; its --check-flow mode fails when the",
+    "resolved klt's version or any klt_required_commands entry drifts.",
+    "klt_required_commands now lists every verb the flow-smoke runner",
+    "drives (issue #21): synthesize, place-and-route, sta, drc, lvs, erc."
   ],
-  "klt_install": "<!-- FILL: git+https://github.com/2AMLogic/klayout-tools@<verified-commit-sha> -- the exact commit you verify klt drc (and extract/lvs, once those runners exist) against when this repo's layout/ harness first comes up -->",
-  "klt_required_commands": ["drc"],
-  "klt_last_verified_commit": "<!-- FILL: the same commit sha as klt_install, restated -->",
-  "klayout_package_min": "<!-- FILL: floor for the pip klayout package version -- check klayout-tools' current pyproject.toml for its own floor and record it here -->"
+  "klt_install": "klayout-tools==0.9.2",
+  "klt_required_commands": ["synthesize", "place-and-route", "sta", "drc", "lvs", "erc"],
+  "klt_last_verified_commit": "046ba74652fc096bd97071fc3237f7159dd40183",
+  "klayout_package_min": "0.30"
 }

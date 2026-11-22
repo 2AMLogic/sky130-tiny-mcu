@@ -79,6 +79,13 @@ jobs:
         run: |
           python3 -I verification/tools/lint_records.py
           python3 -I verification/tools/tests/test_lint_records.py
+          python3 -I verification/tools/tests/test_run_flow_smoke.py
+      - name: setup-env check-mode fixture test (issue #21)
+        # Hermetic: every tool is a stub, so this runs on the bare runner and
+        # pins both --check (simulation pins only, the shape this job needs)
+        # and --check-flow (fail, never skip, on a flow-pin problem).
+        run: |
+          scripts/tests/test-setup-env.sh
       - name: WORK_PLAN stamp guard and its fixture test (issue #11)
         run: |
           scripts/tests/test-check-work-plan-stamp.sh
