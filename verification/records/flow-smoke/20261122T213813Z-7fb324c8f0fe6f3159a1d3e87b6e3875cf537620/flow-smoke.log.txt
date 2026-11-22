@@ -1,0 +1,26 @@
+klt: uvx --from klayout-tools==0.9.2 klt
+commit: 7fb324c8f0fe6f3159a1d3e87b6e3875cf537620
+pdk: sky130A open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7
+== synthesize: uvx --from klayout-tools==0.9.2 klt synthesize --format json --pdk sky130A flow/smoke/synth.json
+   exit 0
+   gates: PASS
+   netlist hashes: netlist_sha256=103e9ce52edc692dddd74895631f3be5ee0d3d2dc14be21fcf2219576c5bc02d netlist_sha256_banner_normalised=add7ca4e76f53fcde0e45f87f14b4f34233093ae5befb1c5b8a503d62f728602 (yosys build: Yosys 0.67+post (git sha1 b8e7da6f40ae8f552c116bf6c359b07c6533e159, Release, GNU /usr/bin/c++ 13.3.0))
+== place-and-route: uvx --from klayout-tools==0.9.2 klt place-and-route --format json --pdk sky130A flow/smoke/par.json
+   exit 0
+   gates: PASS
+== sta: uvx --from klayout-tools==0.9.2 klt sta --format json --pdk sky130A flow/smoke/sta.json
+   exit 0
+   gates: PASS
+== drc: uvx --from klayout-tools==0.9.2 klt drc --format json flow/smoke/drc.json
+   exit 0
+   | klt: warning: resolved klayout engine version '0.30.13' differs from klayout==0.30.12, the version this klayout-tools build/commit was tested against -- DRC/LVS report counts (deck content hash, rules_skipped, category_counts, ...) may differ from a report generated with klayout==0.30.12, even though the verdict itself is unaffected. To reproduce the exact engine: `uv tool install "klayout-tools @ git+...@<sha>" --with klayout==0.30.12` -- see docs/json-contract.md's "Shared `provenance` block".
+   gates: PASS
+== lvs: uvx --from klayout-tools==0.9.2 klt lvs --format json flow/smoke/lvs.json
+   exit 0
+   | klt: warning: resolved klayout engine version '0.30.13' differs from klayout==0.30.12, the version this klayout-tools build/commit was tested against -- DRC/LVS report counts (deck content hash, rules_skipped, category_counts, ...) may differ from a report generated with klayout==0.30.12, even though the verdict itself is unaffected. To reproduce the exact engine: `uv tool install "klayout-tools @ git+...@<sha>" --with klayout==0.30.12` -- see docs/json-contract.md's "Shared `provenance` block".
+   gates: PASS
+== erc: uvx --from klayout-tools==0.9.2 klt erc --format json --top smoke --pdk sky130 --deck sky130 flow/build/smoke/pnr/smoke.gds flow/smoke/erc.json
+   exit 0
+   | klt erc: warning: stackup entry 'met2' declares label_layer 69/5, but that layer carries no text anywhere in the analysed top cell -- nets matched through it resolve zero islands (erc.unconnected_net) and its gates[].net reads null. Check the label layer/datatype.
+   | klt erc: warning: stackup entry 'met4' declares label_layer 71/5, but that layer carries no text anywhere in the analysed top cell -- nets matched through it resolve zero islands (erc.unconnected_net) and its gates[].net reads null. Check the label layer/datatype.
+   gates: PASS
