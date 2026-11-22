@@ -5,7 +5,8 @@
 
 Driven by `make -C verification flow-smoke` (verification/Makefile), which
 first runs `scripts/setup-env.sh --check-flow` so every pin (PDK revision,
-klt, Yosys, OpenROAD) is verified before this script starts.
+klt, the klayout engine it loads, Yosys, OpenROAD) is verified before this
+script starts.
 
 Stages, in order, each through the pinned `klt` and a committed request
 document under `flow/smoke/` (see that directory's README -- the floorplan
@@ -212,6 +213,21 @@ def pins(root: Path) -> dict[str, str]:
     return out
 
 
+def engine_pin_error(info: Any, pin: str) -> str | None:
+    """Why `klt version --format json`'s payload misses PIN_KLAYOUT, else None.
+
+    klt declares only a floor on the klayout engine, so the engine a klt at
+    PIN_KLT loads is whatever its environment resolved; `klayout_version` is
+    klt's own report of that engine.
+    """
+    engine = info.get("klayout_version") if isinstance(info, dict) else None
+    if not isinstance(engine, str) or not engine:
+        return "no klayout_version in `klt version --format json`"
+    if engine != pin:
+        return f"resolved klt loads klayout {engine} != pin {pin}"
+    return None
+
+
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, **kw)
 
@@ -245,6 +261,14 @@ def probe(root: Path, klt_cmd: list[str]) -> dict[str, Any]:
         raise RuntimeError(f"resolved klt is not the pin {p['PIN_KLT']}: "
                            f"{kver.stdout.strip() or kver.stderr.strip()}")
     tools["klt"] = kver.stdout.strip().splitlines()[0]
+    kv = run(klt_cmd + ["version", "--format", "json"])
+    try:
+        info = json.loads(kv.stdout)
+    except ValueError:
+        info = None
+    why = engine_pin_error(info, p["PIN_KLAYOUT"])
+    if why:
+        raise RuntimeError(f"{why} (scripts/setup-env.sh --check-flow)")
     for name, cmd, expect in (("yosys", ["yosys", "-V"], p["PIN_YOSYS"]),
                               ("openroad", ["openroad", "-version"], p["PIN_OPENROAD"])):
         r = run(cmd)

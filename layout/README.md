@@ -7,12 +7,16 @@ toolchain that will check it is already pinned and exercised:
 
 [`toolchain.json`](toolchain.json) states the klt pin (`klayout-tools==0.9.2`,
 its `v0.9.2` commit restated in `klt_last_verified_commit`), the `klayout`
-package floor, and every `klt` verb this repo's runners invoke in
+package floor (`klayout_package_min`) and its exact pin
+(`klayout_package_pin` — the engine that klt release was tested against; klt
+declares only the floor, so the exact version is pinned here and in
+`scripts/setup-env.sh`), and every `klt` verb this repo's runners invoke in
 `klt_required_commands` (`synthesize`, `place-and-route`, `sta`, `drc`, `lvs`,
 `erc`). `scripts/setup-env.sh --check-flow` verifies all of it — the resolved
-klt's version *and* each required command in its `--help` — before any flow
-runner starts, and fails, never skips, on a mismatch. Its `_comment` is
-append-only: each later pin bump adds a paragraph, never edits one.
+klt's version, the klayout engine it loads, and each required command in its
+`--help` — before any flow runner starts, and fails, never skips, on a
+mismatch. Its `_comment` is append-only: each later pin bump adds a
+paragraph, never edits one.
 
 ## Layout checks today
 
