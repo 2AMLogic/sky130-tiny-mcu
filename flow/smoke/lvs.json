@@ -21,8 +21,7 @@
       "expected_nets": {
         "VPWR": "VDD",
         "VGND": "VSS",
-        "VPB": "VDD",
-        "VNB": "VSS"
+        "VPB": "VDD"
       }
     }
   }

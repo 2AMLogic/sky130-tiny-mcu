@@ -74,11 +74,18 @@ def drc_env(**over: object) -> dict:
     return {"schema_version": 1, "status": "clean", "violation_count": 0, **over}
 
 
-def lvs_env(power_status: str = "match", **over: object) -> dict:
+def lvs_env(power_status: str = "match", unchecked: list | None = None,
+            **over: object) -> dict:
+    # power_connectivity carries unchecked_expected_pins in every envelope
+    # the pinned klt emits, so the fixture matches that shape by default
     return {
         "schema_version": 1,
         "status": "match",
-        "power_connectivity": {"status": power_status, "reason": None},
+        "power_connectivity": {
+            "status": power_status,
+            "reason": None,
+            "unchecked_expected_pins": [] if unchecked is None else unchecked,
+        },
         **over,
     }
 
@@ -197,6 +204,33 @@ class NegativeLvs(unittest.TestCase):
     def test_signal_mismatch(self):
         f = grade_envelope("lvs", lvs_env() | {"status": "mismatch"})
         self.assertTrue(any("status" in x and "power" not in x for x in f))
+
+    def test_unchecked_expected_pins(self):
+        # status says match, yet the declared VNB expectation resolved zero
+        # rows: a check that could not run must not read as one that passed
+        # (the exact power_connectivity shape of record 20261122T200938Z)
+        env = lvs_env(unchecked=["VNB"])
+        f = grade_envelope("lvs", env)
+        self.assertTrue(any("unchecked_expected_pins" in x for x in f))
+        self.assertTrue(any("VNB" in x for x in f))
+
+    def test_unchecked_expected_pins_empty_passes(self):
+        self.assertEqual(grade_envelope("lvs", lvs_env()), [])
+
+    def test_unchecked_expected_pins_key_absent(self):
+        # envelope shape drift: without the key the gate cannot tell checked
+        # from unchecked, so it fails instead of silently passing
+        env = lvs_env()
+        del env["power_connectivity"]["unchecked_expected_pins"]
+        f = grade_envelope("lvs", env)
+        self.assertTrue(any("unchecked_expected_pins" in x for x in f))
+
+    def test_typoed_expected_pin(self):
+        # a typo'd expected_nets key lands in unchecked_expected_pins and
+        # must fail the gate naming the pin
+        env = lvs_env(unchecked=["VPWRX"])
+        f = grade_envelope("lvs", env)
+        self.assertTrue(any("VPWRX" in x for x in f))
 
 
 class NegativeErc(unittest.TestCase):
