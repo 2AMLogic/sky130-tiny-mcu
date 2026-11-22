@@ -42,16 +42,24 @@ for [`cocotb.mk`](cocotb.mk), as `smoke` does.
 ## Cold start, implementation flow (`make flow-smoke`)
 
 The flow target additionally needs the flow pins — the sky130A PDK at the
-pinned open_pdks revision, `klt` at the pinned klayout-tools release (install
-it into the same venv: `.venv/bin/pip install
-"klayout-tools==$(sed -n 's/^PIN_KLT="\([^"]*\)".*/\1/p' scripts/setup-env.sh)"`,
-or let `setup-env.sh` resolve it through `uvx`), Yosys and OpenROAD. Two more
-check modes cover them:
+pinned open_pdks revision, `klt` at the pinned klayout-tools release **with
+the klayout engine at the pinned version** (klayout-tools declares only a
+floor on the engine, so an install that does not state the exact pin resolves
+the newest `klayout` release instead; install both into the same venv:
+
+```
+.venv/bin/pip install \
+    "klayout-tools==$(sed -n 's/^PIN_KLT="\([^"]*\)".*/\1/p' scripts/setup-env.sh)" \
+    "klayout==$(sed -n 's/^PIN_KLAYOUT="\([^"]*\)".*/\1/p' scripts/setup-env.sh)"
+```
+
+or let `setup-env.sh` resolve it through `uvx`, which states both pins),
+Yosys and OpenROAD. Two more check modes cover them:
 
 | Command | What it verifies |
 | --- | --- |
 | `scripts/setup-env.sh --check` | the simulation pins only (cocotb, iverilog) — exactly what hosted CI runs on runners with no PDK/klt/Yosys/OpenROAD |
-| `scripts/setup-env.sh --check-flow` | the simulation pins **plus** the PDK revision, klt version, every `klt_required_commands` entry in `klt --help`, Yosys and OpenROAD; fails, never skips, on any mismatch or absence |
+| `scripts/setup-env.sh --check-flow` | the simulation pins **plus** the PDK revision, klt version, the klayout engine the resolved klt loads (and that it is the engine klt itself was tested against — `klt version --format json`), the same engine pin restated in `layout/toolchain.json`, every `klt_required_commands` entry in `klt --help`, Yosys and OpenROAD; fails, never skips, on any mismatch or absence |
 | `scripts/setup-env.sh --fetch-pdk` | fetches sky130A at the pinned open_pdks revision into `${PDK_ROOT:-~/.ciel}` via ciel (through `uvx`), then runs `--check-flow` |
 
 ```
