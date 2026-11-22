@@ -11,7 +11,8 @@
 #                                      verifying only the simulation pins.
 #   scripts/setup-env.sh --check-flow  the simulation pins above plus every
 #                                      implementation-flow pin (PDK revision,
-#                                      klt version + the commands
+#                                      klt version, the klayout engine it
+#                                      loads + the commands
 #                                      layout/toolchain.json requires, Yosys,
 #                                      OpenROAD); exit 1 on any mismatch or
 #                                      absence -- never a warn/skip. The
@@ -25,7 +26,8 @@
 #                                      line): .venv/bin/klt when it carries
 #                                      the pin, else a PATH klt whose version
 #                                      matches the pin, else
-#                                      `uvx --from klayout-tools==$PIN_KLT`.
+#                                      `uvx --from klayout-tools==$PIN_KLT
+#                                      --with klayout==$PIN_KLAYOUT`.
 #
 # The check modes fetch nothing and install no tool: tools are only checked.
 # Copied by pattern from sky130-riscv-soc's scripts/setup-env.sh (source
@@ -45,6 +47,10 @@ PIN_OPEN_PDKS_REV="f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7"
 PIN_CIEL="3.1.0"        # PDK fetcher for --fetch-pdk, via uvx
 PIN_KLT="0.9.2"         # PyPI release klayout-tools; layout/toolchain.json states the same pin
 PIN_KLAYOUT_MIN="0.30"  # klayout package floor that klayout-tools==0.9.2 declares
+PIN_KLAYOUT="0.30.12"   # exact klayout engine: the version klayout-tools==0.9.2 was tested
+                        # against (`klt version --format json`'s klayout_version_expected).
+                        # klt declares only the floor above, so an install that does not
+                        # state this pin resolves the newest klayout release instead.
 PIN_YOSYS="0.67+post"
 PIN_YOSYS_SHA="b8e7da6f40ae8f552c116bf6c359b07c6533e159"
 PIN_OPENROAD="26Q3-1510-g6cb3f2b704"
@@ -96,10 +102,26 @@ klt_version_of() {
     "$@" --version 2>/dev/null | head -n 1 | sed -n 's/^klt \([0-9][^ ]*\).*/\1/p' || true
 }
 
+# klt_version_field FIELD CMD... : one string field of `CMD... version --format
+# json` ("" when the command fails or the field is absent or not a string)
+klt_version_field() {
+    local field="$1"; shift
+    "$@" version --format json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    v = json.load(sys.stdin)[sys.argv[1]]
+except Exception:
+    v = None
+if isinstance(v, str):
+    print(v)
+' "$field" || true
+}
+
 # resolve_klt : print the command line that runs klt at PIN_KLT. .venv first
 # (the cold-start venv), then a PATH klt that already carries the pin (a
 # dev build does not -- the dispatch-worker case), then the pinned PyPI
-# release through uvx, which provisions nothing on the host.
+# release through uvx, which provisions nothing on the host. The uvx form
+# states PIN_KLAYOUT too: klt declares only a floor on the klayout engine.
 resolve_klt() {
     if [[ -x "${REPO_ROOT}/.venv/bin/klt" ]] \
         && [[ "$(klt_version_of "${REPO_ROOT}/.venv/bin/klt")" == "${PIN_KLT}" ]]; then
@@ -108,8 +130,21 @@ resolve_klt() {
         && [[ "$(klt_version_of klt)" == "${PIN_KLT}" ]]; then
         printf '%s\n' "klt"
     else
-        printf '%s\n' "uvx --from klayout-tools==${PIN_KLT} klt"
+        printf '%s\n' "uvx --from klayout-tools==${PIN_KLT} --with klayout==${PIN_KLAYOUT} klt"
     fi
+}
+
+# toolchain_field KEY : one string field of layout/toolchain.json ("" if absent)
+toolchain_field() {
+    python3 -c '
+import json, sys
+try:
+    v = json.load(open(sys.argv[1]))[sys.argv[2]]
+except Exception:
+    v = None
+if isinstance(v, str):
+    print(v)
+' "${REPO_ROOT}/layout/toolchain.json" "$1" || true
 }
 
 check_klt() {
@@ -122,6 +157,35 @@ check_klt() {
     else
         fail klt "got '${out:-no version}', pinned ${PIN_KLT} (resolved: ${cmd})"
         return
+    fi
+    # the klayout engine this klt loads must be the exact pin, and the pin
+    # must be the engine klt itself was tested against: klt declares only a
+    # floor, so without both checks an install drifts under a fixed PIN_KLT
+    local engine expected
+    # shellcheck disable=SC2086
+    engine="$(klt_version_field klayout_version $cmd)"
+    # shellcheck disable=SC2086
+    expected="$(klt_version_field klayout_version_expected $cmd)"
+    if [[ -z "$engine" ]]; then
+        fail klayout "no klayout_version in \`${cmd} version --format json\` (pinned ${PIN_KLAYOUT})"
+    elif [[ "$engine" == "${PIN_KLAYOUT}" ]]; then
+        ok klayout "${engine} (loaded by ${cmd})"
+    else
+        fail klayout "got '${engine}', pinned ${PIN_KLAYOUT} (loaded by ${cmd}); install klayout==${PIN_KLAYOUT} into that klt's environment"
+    fi
+    if [[ -z "$expected" ]]; then
+        fail klt-tested "no klayout_version_expected in \`${cmd} version --format json\`; cannot tell which klayout klt ${PIN_KLT} was tested against"
+    elif [[ "$expected" != "${PIN_KLAYOUT}" ]]; then
+        fail klt-tested "klt ${PIN_KLT} was tested against klayout ${expected}, but PIN_KLAYOUT is ${PIN_KLAYOUT}; move the pin with PIN_KLT"
+    else
+        ok klt-tested "klt ${PIN_KLT} was tested against klayout ${expected}"
+    fi
+    # layout/toolchain.json states the same engine pin; it must not drift
+    out="$(toolchain_field klayout_package_pin)"
+    if [[ "$out" == "${PIN_KLAYOUT}" ]]; then
+        ok toolchain "layout/toolchain.json klayout_package_pin ${out}"
+    else
+        fail toolchain "layout/toolchain.json klayout_package_pin '${out:-absent}', PIN_KLAYOUT ${PIN_KLAYOUT}"
     fi
     # every command layout/toolchain.json requires must exist in klt --help
     local help_cmds want missing=""
