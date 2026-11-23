@@ -6,7 +6,7 @@ The body below is a snapshot of GitHub label state as of the last merged docs-ma
 
 <!-- Maintained automatically by the Guide triage agent. Manual edits are fine but may be overwritten. -->
 <!-- guide:plan-body:start -->
-_Generated: 2026-11-23T04:07:50Z (snapshot; compare against live labels)_
+_Generated: 2026-11-23T10:08:48Z (snapshot; compare against live labels)_
 ## Operator Attention: Merge-Risk-Hold Pileup
 
 Judge-approved PRs under a hold (`loom:blocked` or `loom:operator`) — only a human merge decision is missing.
@@ -57,7 +57,7 @@ Issues carrying `loom:curated`.
 
 ## Proposed (Architect / Hermit)
 
-- **#12**: Remove or make honest the package.json stub: scripts exit 0 without checking anything *(hermit)*
+- **#12**: Remove or make honest the package.json stub: scripts exit 0 without checking anything *(hermit)* *(held)*
 
 ## Epics
 
