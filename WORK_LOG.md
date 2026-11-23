@@ -11,6 +11,9 @@ _None yet._
 
 ### 2026-11-22
 
+- **PR #33**: flow-smoke: pair netlist_sha256 with a banner-normalised hash; record the banner-cause finding
+- **Issue #34** (closed): flow-smoke: netlist_sha256_banner_normalised is only in the run log, not in a structured record field
+- **Issue #32** (closed): flow-smoke's recorded netlist_sha256 is not reproducible across two runs at the same pinned Yosys version
 - **PR #29**: fix: pin the klayout engine exactly and fail --check-flow when it drifts
 - **PR #27**: fix: reject legacy YYYY-MM-DD record dirs in records linter
 - **Issue #26** (closed): Pin the klayout engine version exactly, not just a floor: flow-smoke ran 0.30.13 against a klt build tested on 0.30.12
