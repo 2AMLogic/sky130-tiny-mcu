@@ -188,7 +188,21 @@ check_klt() {
         fail toolchain "layout/toolchain.json klayout_package_pin '${out:-absent}', PIN_KLAYOUT ${PIN_KLAYOUT}"
     fi
     # every command layout/toolchain.json requires must exist in klt --help
-    local help_cmds want missing=""
+    local help_cmds want missing="" required
+    # read the list once; a missing or unreadable list is a failure, not an
+    # empty list
+    if ! required="$(python3 -c '
+import json, sys
+with open(sys.argv[1]) as f:
+    cmds = json.load(f)["klt_required_commands"]
+if not isinstance(cmds, list) or not all(isinstance(c, str) for c in cmds):
+    raise TypeError("klt_required_commands is not a list of strings")
+for c in cmds:
+    print(c)
+' "${REPO_ROOT}/layout/toolchain.json" 2>/dev/null)"; then
+        fail klt-commands "layout/toolchain.json klt_required_commands absent or unreadable"
+        return
+    fi
     # shellcheck disable=SC2086
     help_cmds="$($cmd --help 2>/dev/null \
         | sed -n '/positional arguments:/,/options:/p' \
@@ -198,19 +212,11 @@ check_klt() {
         if ! grep -qx "$want" <<<"$help_cmds"; then
             missing="${missing}${missing:+ }${want}"
         fi
-    done < <(python3 -c '
-import json, sys
-with open(sys.argv[1]) as f:
-    for c in json.load(f)["klt_required_commands"]:
-        print(c)
-' "${REPO_ROOT}/layout/toolchain.json")
+    done <<<"$required"
     if [[ -n "$missing" ]]; then
         fail klt-commands "klt ${PIN_KLT} lacks required command(s): ${missing}"
     else
-        ok klt-commands "$(python3 -c '
-import json, sys
-print(" ".join(json.load(open(sys.argv[1]))["klt_required_commands"]))
-' "${REPO_ROOT}/layout/toolchain.json")"
+        ok klt-commands "$(tr '\n' ' ' <<<"$required" | sed 's/ $//')"
     fi
 }
 

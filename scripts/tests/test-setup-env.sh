@@ -191,12 +191,28 @@ CASE_ENV=("${FLOW_OK[@]}")
 SETUP="$drift/scripts/setup-env.sh" \
     run_case 1 "--check-flow fails when toolchain.json's klayout_package_pin drifts from PIN_KLAYOUT"
 log_has "  ...naming both values" "^FAIL  toolchain +layout/toolchain\\.json klayout_package_pin '0\\.0\\.0-drift', PIN_KLAYOUT 0\\.30\\.12"
+# klt_required_commands removed from a COPY of the manifest: the check must
+# fail naming the field, not pass on an empty list
+nolist="$work/repo-nolist"
+mkdir -p "$nolist/scripts" "$nolist/layout"
+cp "$setup" "$nolist/scripts/setup-env.sh"
+python3 -c '
+import json, sys
+d = json.load(open(sys.argv[1]))
+del d["klt_required_commands"]
+json.dump(d, open(sys.argv[2], "w"))
+' "$repo_root/layout/toolchain.json" "$nolist/layout/toolchain.json"
+CASE_ENV=("${FLOW_OK[@]}")
+SETUP="$nolist/scripts/setup-env.sh" \
+    run_case 1 "--check-flow fails when toolchain.json has no klt_required_commands"
+log_has "  ...naming the field" "^FAIL  klt-commands +.*klt_required_commands"
 CASE_ENV=("${FLOW_OK[@]}" YOSYS_V=0.44)
 run_case 1 "--check-flow fails on a Yosys mismatch"
 CASE_ENV=("${FLOW_OK[@]}" OPENROAD_V=24Q1-g000000)
 run_case 1 "--check-flow fails on an OpenROAD mismatch"
 CASE_ENV=("${FLOW_OK[@]}")
 run_case 0 "--check-flow passes when every pin matches"
+log_has "  ...listing all six required commands" "^ok    klt-commands +([a-z0-9-]+ ){5}[a-z0-9-]+$"
 log_has "  ...reporting the klayout engine at the pin" "^ok    klayout +0\\.30\\.12 \\(loaded by klt\\)"
 CASE_ENV=(COCOTB_V= PDK_ROOT="$work/pdk")
 run_case 1 "--check-flow still verifies the simulation pins (cocotb missing)"
