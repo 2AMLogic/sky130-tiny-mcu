@@ -73,6 +73,16 @@ log_has() {
   fi
 }
 
+# log_lacks <desc> <grep -E pattern> : the last run's log must NOT contain it
+log_lacks() {
+  if grep -qE -- "$2" "$work/last-case.log"; then
+    fail=$((fail + 1)); echo "FAIL: $1 — unexpected line matching '$2' in:" >&2
+    sed 's/^/    | /' "$work/last-case.log" >&2
+  else
+    pass=$((pass + 1)); echo "PASS: $1"
+  fi
+}
+
 resolve_case() { # resolve_case <desc> <want-substring-or-equal>
   local desc="$1" want="$2" got
   got="$(env PATH="$STUB_BIN:/usr/bin:/bin" HOME="$work/home" "${CASE_ENV[@]}" \
@@ -206,6 +216,25 @@ CASE_ENV=("${FLOW_OK[@]}")
 SETUP="$nolist/scripts/setup-env.sh" \
     run_case 1 "--check-flow fails when toolchain.json has no klt_required_commands"
 log_has "  ...naming the field" "^FAIL  klt-commands +.*klt_required_commands"
+# an empty list (or an empty-string entry) declares nothing to verify: it
+# must fail the same way, never report ok with zero commands checked
+for shape in '[]' '[""]'; do
+    empty="$work/repo-empty"
+    rm -rf "$empty"
+    mkdir -p "$empty/scripts" "$empty/layout"
+    cp "$setup" "$empty/scripts/setup-env.sh"
+    python3 -c '
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["klt_required_commands"] = json.loads(sys.argv[3])
+json.dump(d, open(sys.argv[2], "w"))
+' "$repo_root/layout/toolchain.json" "$empty/layout/toolchain.json" "$shape"
+    CASE_ENV=("${FLOW_OK[@]}")
+    SETUP="$empty/scripts/setup-env.sh" \
+        run_case 1 "--check-flow fails when klt_required_commands is $shape"
+    log_has "  ...naming the field" "^FAIL  klt-commands +.*klt_required_commands"
+    log_lacks "  ...without an ok line" "^ok    klt-commands"
+done
 CASE_ENV=("${FLOW_OK[@]}" YOSYS_V=0.44)
 run_case 1 "--check-flow fails on a Yosys mismatch"
 CASE_ENV=("${FLOW_OK[@]}" OPENROAD_V=24Q1-g000000)
