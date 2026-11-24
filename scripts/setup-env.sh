@@ -189,18 +189,18 @@ check_klt() {
     fi
     # every command layout/toolchain.json requires must exist in klt --help
     local help_cmds want missing="" required
-    # read the list once; a missing or unreadable list is a failure, not an
-    # empty list
+    # read the list once; a missing, unreadable or empty list is a failure,
+    # never a pass with zero commands verified
     if ! required="$(python3 -c '
 import json, sys
 with open(sys.argv[1]) as f:
     cmds = json.load(f)["klt_required_commands"]
-if not isinstance(cmds, list) or not all(isinstance(c, str) for c in cmds):
-    raise TypeError("klt_required_commands is not a list of strings")
+if not isinstance(cmds, list) or not cmds or not all(isinstance(c, str) and c for c in cmds):
+    raise TypeError("klt_required_commands is not a non-empty list of strings")
 for c in cmds:
     print(c)
 ' "${REPO_ROOT}/layout/toolchain.json" 2>/dev/null)"; then
-        fail klt-commands "layout/toolchain.json klt_required_commands absent or unreadable"
+        fail klt-commands "layout/toolchain.json klt_required_commands absent, empty or unreadable"
         return
     fi
     # shellcheck disable=SC2086
