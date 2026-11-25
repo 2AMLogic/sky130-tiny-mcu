@@ -13,10 +13,12 @@
 #                                      implementation-flow pin (PDK revision,
 #                                      klt version, the klayout engine it
 #                                      loads + the commands
-#                                      layout/toolchain.json requires, Yosys,
-#                                      OpenROAD); exit 1 on any mismatch or
-#                                      absence -- never a warn/skip. The
-#                                      flow-smoke target runs this first.
+#                                      layout/toolchain.json requires, that
+#                                      the engine pin itself meets the
+#                                      declared floor, Yosys, OpenROAD);
+#                                      exit 1 on any mismatch or absence --
+#                                      never a warn/skip. run_flow_smoke.py
+#                                      runs this first.
 #   scripts/setup-env.sh --fetch-pdk   fetch sky130A at the pinned open_pdks
 #                                      revision into ${PDK_ROOT:-$HOME/.ciel}
 #                                      via ciel (run through a throwaway uvx
@@ -220,6 +222,18 @@ for c in cmds:
     fi
 }
 
+# the exact engine pin never sits below the floor klt declares: a
+# PIN_KLAYOUT edit that drops below PIN_KLAYOUT_MIN is self-inconsistent
+check_klayout_pin_floor() {
+    local lowest
+    lowest="$(printf '%s\n' "${PIN_KLAYOUT_MIN}" "${PIN_KLAYOUT}" | sort -V | head -n 1)"
+    if [[ "$lowest" == "${PIN_KLAYOUT_MIN}" ]]; then
+        ok klayout-pin "PIN_KLAYOUT ${PIN_KLAYOUT} >= floor ${PIN_KLAYOUT_MIN}"
+    else
+        fail klayout-pin "PIN_KLAYOUT ${PIN_KLAYOUT} sits below the declared floor PIN_KLAYOUT_MIN ${PIN_KLAYOUT_MIN}"
+    fi
+}
+
 run_check() {
     check_tool iverilog "version ${PIN_IVERILOG} " iverilog -V
     check_cocotb
@@ -228,6 +242,7 @@ run_check() {
 }
 
 run_check_flow() {
+    check_klayout_pin_floor
     check_tool iverilog "version ${PIN_IVERILOG} " iverilog -V
     check_cocotb
     check_pdk

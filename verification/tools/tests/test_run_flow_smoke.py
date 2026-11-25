@@ -8,7 +8,9 @@ issue's review: a partial placed-power audit, an absent supply row in erc
 nets[] (output rows key on name and never echo kind, so a kind filter can
 select zero rows and silently pass), and a skipped tie check.
 """
+import contextlib
 import hashlib
+import io
 import sys
 import tempfile
 import unittest
@@ -16,15 +18,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import run_flow_smoke  # noqa: E402
 from run_flow_smoke import (  # noqa: E402
     VERBS,
-    engine_pin_error,
     grade_envelope,
     grade_result,
     netlist_hash_note,
     normalised_netlist_sha256,
-    pins,
-    repo_root,
 )
 
 
@@ -133,35 +133,38 @@ class Passing(unittest.TestCase):
         self.assertEqual(grade_result(passing_result()), [])
 
 
-class EnginePin(unittest.TestCase):
-    """The klayout engine probe (#26): klt at its pin with a drifted engine
-    must fail the probe, which writes no record."""
+class CheckFlowPreflight(unittest.TestCase):
+    """main() delegates every pin check to `scripts/setup-env.sh
+    --check-flow` (the single pin source, issue #45): a failing check is
+    forwarded and exits 1 before --klt-bin, scratch cleanup or any record
+    directory, so a pin mismatch writes nothing."""
 
-    def test_engine_at_the_pin(self):
-        info = {"version": "0.9.2", "klayout_version": "0.30.12",
-                "klayout_version_expected": "0.30.12"}
-        self.assertIsNone(engine_pin_error(info, "0.30.12"))
-
-    def test_only_the_engine_moved(self):
-        info = {"version": "0.9.2", "klayout_version": "0.30.13",
-                "klayout_version_expected": "0.30.12"}
-        why = engine_pin_error(info, "0.30.12")
-        self.assertIsNotNone(why)
-        self.assertIn("klayout 0.30.13", why)
-        self.assertIn("pin 0.30.12", why)
-
-    def test_engine_unreadable(self):
-        for info in (None, [], {}, {"klayout_version": None},
-                     {"klayout_version": 0.30}, {"klayout_version": ""}):
-            with self.subTest(info=info):
-                self.assertIn("no klayout_version", engine_pin_error(info, "0.30.12"))
-
-    def test_pin_is_stated_and_meets_the_floor(self):
-        # the probe reads PIN_KLAYOUT from the one pin source; the exact pin
-        # never sits below the floor klt declares
-        p = pins(repo_root())
-        parts = lambda v: [int(x) for x in v.split(".")]  # noqa: E731
-        self.assertGreaterEqual(parts(p["PIN_KLAYOUT"]), parts(p["PIN_KLAYOUT_MIN"]))
+    def test_failing_check_flow_exits_1_and_records_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "scripts").mkdir()
+            (root / "scripts" / "setup-env.sh").write_text(
+                "#!/usr/bin/env bash\n"
+                "echo 'FAIL  klt        got 0.9.3.dev1, pinned 0.9.2' >&2\n"
+                "echo 'environment does not match the flow pins' >&2\n"
+                "exit 1\n")
+            (root / "scripts" / "setup-env.sh").chmod(0o755)
+            real_repo_root = run_flow_smoke.repo_root
+            run_flow_smoke.repo_root = lambda: root
+            try:
+                out, err = io.StringIO(), io.StringIO()
+                with contextlib.redirect_stdout(out), \
+                        contextlib.redirect_stderr(err):
+                    rc = run_flow_smoke.main([])
+            finally:
+                run_flow_smoke.repo_root = real_repo_root
+            self.assertEqual(rc, 1)
+            self.assertIn("FAIL  klt", err.getvalue())
+            self.assertIn("environment does not match the flow pins",
+                          err.getvalue())
+            self.assertIn("nothing recorded", err.getvalue())
+            # fail-before-record: no record directory was ever created
+            self.assertFalse((root / "verification" / "records").exists())
 
 
 class NegativeSynthesize(unittest.TestCase):

@@ -239,8 +239,23 @@ CASE_ENV=("${FLOW_OK[@]}" YOSYS_V=0.44)
 run_case 1 "--check-flow fails on a Yosys mismatch"
 CASE_ENV=("${FLOW_OK[@]}" OPENROAD_V=24Q1-g000000)
 run_case 1 "--check-flow fails on an OpenROAD mismatch"
+# the exact engine pin never sits below the declared floor (the floor
+# assertion relocated from test_run_flow_smoke.py's EnginePin, now enforced
+# by the pin file itself): a drifted COPY of the script must fail naming
+# both versions (the real file is never touched)
+floor="$work/repo-floor"
+mkdir -p "$floor/scripts" "$floor/layout"
+sed -E 's/^PIN_KLAYOUT="[^"]*"/PIN_KLAYOUT="0.29.1"/' \
+    "$setup" >"$floor/scripts/setup-env.sh"
+chmod +x "$floor/scripts/setup-env.sh"
+cp "$repo_root/layout/toolchain.json" "$floor/layout/toolchain.json"
+CASE_ENV=("${FLOW_OK[@]}")
+SETUP="$floor/scripts/setup-env.sh" \
+    run_case 1 "--check-flow fails when PIN_KLAYOUT sits below the declared floor"
+log_has "  ...naming both versions" "^FAIL  klayout-pin +PIN_KLAYOUT 0\\.29\\.1 sits below the declared floor PIN_KLAYOUT_MIN 0\\.30$"
 CASE_ENV=("${FLOW_OK[@]}")
 run_case 0 "--check-flow passes when every pin matches"
+log_has "  ...with the shipped PIN_KLAYOUT meeting the declared floor" "^ok    klayout-pin +PIN_KLAYOUT 0\\.30\\.12 >= floor 0\\.30$"
 log_has "  ...listing all six required commands" "^ok    klt-commands +([a-z0-9-]+ ){5}[a-z0-9-]+$"
 log_has "  ...reporting the klayout engine at the pin" "^ok    klayout +0\\.30\\.12 \\(loaded by klt\\)"
 CASE_ENV=(COCOTB_V= PDK_ROOT="$work/pdk")

@@ -66,10 +66,11 @@ smoke:
 # The implementation-flow smoke run: request-driven through the pinned klt
 # (see ../flow/smoke/), gated on the six envelopes, recorded append-only.
 # The guard is the flow pin check -- PDK revision, klt, Yosys, OpenROAD --
-# which fails, never skips, on any mismatch or absence; it needs the
+# which fails, never skips, on any mismatch or absence. run_flow_smoke.py
+# runs `scripts/setup-env.sh --check-flow` itself, so the pins are verified
+# once for both this target and a direct script invocation. It needs the
 # cold-start venv active for the cocotb pin. Heavy tools run here, not in
 # hosted CI (see README.md, "What CI runs").
 .PHONY: flow-smoke
 flow-smoke:
-	@cd $(ROOT)/.. && scripts/setup-env.sh --check-flow
 	@cd $(ROOT)/.. && $(PYTHON_BIN) -I verification/tools/run_flow_smoke.py

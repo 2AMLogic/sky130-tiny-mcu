@@ -3,10 +3,12 @@
 
     python3 -I verification/tools/run_flow_smoke.py
 
-Driven by `make -C verification flow-smoke` (verification/Makefile), which
-first runs `scripts/setup-env.sh --check-flow` so every pin (PDK revision,
-klt, the klayout engine it loads, Yosys, OpenROAD) is verified before this
-script starts.
+This script runs `scripts/setup-env.sh --check-flow` first -- the single
+pin check (PDK revision, klt, the klayout engine it loads, Yosys, OpenROAD;
+`scripts/setup-env.sh` is the one pin source, so no pin is re-derived here)
+-- so both `make -C verification flow-smoke` (verification/Makefile) and a
+direct `python3 -I verification/tools/run_flow_smoke.py` verify every pin
+before any stage starts.
 
 Stages, in order, each through the pinned `klt` and a committed request
 document under `flow/smoke/` (see that directory's README -- the floorplan
@@ -91,7 +93,6 @@ STAGE_INPUTS = {
     "lvs": ("flow/build/smoke/pnr/smoke.gds", "flow/build/smoke/pnr/smoke.v"),
     "erc": ("flow/build/smoke/pnr/smoke.gds",),
 }
-#: artifacts the place-and-route gates above inspect the DEF for
 PDK_VARIANT = "sky130A"
 SCRATCH = "flow/build/smoke"
 RECORD_KIND = "flow-smoke"
@@ -246,44 +247,22 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
-def pins(root: Path) -> dict[str, str]:
-    """PIN_* values from scripts/setup-env.sh, the single pin source."""
-    out: dict[str, str] = {}
-    for line in (root / "scripts" / "setup-env.sh").read_text().splitlines():
-        m = re.match(r'^(PIN_[A-Z0-9_]+)="([^"]*)"', line)
-        if m:
-            out[m.group(1)] = m.group(2)
-    return out
-
-
-def engine_pin_error(info: Any, pin: str) -> str | None:
-    """Why `klt version --format json`'s payload misses PIN_KLAYOUT, else None.
-
-    klt declares only a floor on the klayout engine, so the engine a klt at
-    PIN_KLT loads is whatever its environment resolved; `klayout_version` is
-    klt's own report of that engine.
-    """
-    engine = info.get("klayout_version") if isinstance(info, dict) else None
-    if not isinstance(engine, str) or not engine:
-        return "no klayout_version in `klt version --format json`"
-    if engine != pin:
-        return f"resolved klt loads klayout {engine} != pin {pin}"
-    return None
-
-
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, **kw)
 
 
 def probe(root: Path, klt_cmd: list[str]) -> dict[str, Any]:
-    """Probe everything provenance.json needs BEFORE creating the record."""
-    p = pins(root)
+    """Probe everything provenance.json needs BEFORE creating the record.
+
+    Pins are not checked here -- main() runs `scripts/setup-env.sh
+    --check-flow`, the single pin check, before anything else. This collects
+    only the live values the record commits to: the commit, the installed
+    PDK's open_pdks revision, and the tool versions that actually ran."""
     sha = run(["git", "-C", str(root), "rev-parse", "HEAD"])
     if sha.returncode != 0 or not sha.stdout.strip():
         raise RuntimeError(f"cannot probe git HEAD: {sha.stderr.strip() or sha.returncode}")
-    variant = p["PIN_PDK_VARIANT"]
     pdk_root = Path(os.environ.get("PDK_ROOT") or str(Path.home() / ".ciel"))
-    sources = pdk_root / variant / "SOURCES"
+    sources = pdk_root / PDK_VARIANT / "SOURCES"
     try:
         rev = ""
         for line in sources.read_text().splitlines():
@@ -295,35 +274,24 @@ def probe(root: Path, klt_cmd: list[str]) -> dict[str, Any]:
             raise ValueError("no open_pdks line")
     except (OSError, ValueError) as e:
         raise RuntimeError(f"cannot probe pdk revision from {sources}: {e}") from e
-    if rev != p["PIN_OPEN_PDKS_REV"]:
-        raise RuntimeError(f"installed {variant} open_pdks {rev} != pin "
-                           f"{p['PIN_OPEN_PDKS_REV']} (scripts/setup-env.sh --check-flow)")
     tools: dict[str, str] = {}
     kver = run(klt_cmd + ["--version"])
-    if kver.returncode != 0 or f"klt {p['PIN_KLT']}" not in kver.stdout:
-        raise RuntimeError(f"resolved klt is not the pin {p['PIN_KLT']}: "
+    if kver.returncode != 0 or not kver.stdout.strip():
+        raise RuntimeError(f"klt version probe failed: "
                            f"{kver.stdout.strip() or kver.stderr.strip()}")
     tools["klt"] = kver.stdout.strip().splitlines()[0]
-    kv = run(klt_cmd + ["version", "--format", "json"])
-    try:
-        info = json.loads(kv.stdout)
-    except ValueError:
-        info = None
-    why = engine_pin_error(info, p["PIN_KLAYOUT"])
-    if why:
-        raise RuntimeError(f"{why} (scripts/setup-env.sh --check-flow)")
-    for name, cmd, expect in (("yosys", ["yosys", "-V"], p["PIN_YOSYS"]),
-                              ("openroad", ["openroad", "-version"], p["PIN_OPENROAD"])):
+    for name, cmd in (("yosys", ["yosys", "-V"]),
+                      ("openroad", ["openroad", "-version"])):
         r = run(cmd)
         first = (r.stdout + r.stderr).strip().splitlines()[0] if (r.stdout + r.stderr).strip() else ""
-        if r.returncode != 0 or expect not in first:
-            raise RuntimeError(f"{name} probe failed: got '{first}', pinned '{expect}'")
+        if r.returncode != 0 or not first:
+            raise RuntimeError(f"{name} probe failed: got '{first}'")
         tools[name] = first
     return {"commit": sha.stdout.strip(), "pdk_revision": rev, "tools": tools,
-            "pdk_variant": variant}
+            "pdk_variant": PDK_VARIANT}
 
 
-def stage_argv(klt_cmd: list[str], verb: str, root: Path) -> list[str]:
+def stage_argv(klt_cmd: list[str], verb: str) -> list[str]:
     # paths are repo-relative: cwd is the repo root, and klt erc echoes the
     # spec path verbatim into its envelope (an absolute one would leak a
     # home path into the committed record)
@@ -364,20 +332,32 @@ def display_cmd(argv: list[str], root: Path) -> list[str]:
 
 def main(argv: list[str]) -> int:
     root = repo_root()
+    env = dict(os.environ)
+    env.setdefault("PDK_ROOT", str(Path.home() / ".ciel"))
+
+    # the one pin check: scripts/setup-env.sh is the single pin source, and
+    # its --check-flow output is forwarded verbatim. Nothing below runs (no
+    # --klt-bin, no scratch cleanup, no record) on any pin mismatch.
+    cf = run(["bash", str(root / "scripts" / "setup-env.sh"), "--check-flow"],
+             env=env)
+    sys.stdout.write(cf.stdout)
+    sys.stderr.write(cf.stderr)
+    if cf.returncode != 0:
+        print("flow pins do not match (scripts/setup-env.sh --check-flow); "
+              "nothing recorded", file=sys.stderr)
+        return 1
+
     kb = run(["bash", str(root / "scripts" / "setup-env.sh"), "--klt-bin"])
     if kb.returncode != 0 or not kb.stdout.strip():
         print(f"cannot resolve the pinned klt: {kb.stderr.strip()}", file=sys.stderr)
         return 1
     klt_cmd = shlex.split(kb.stdout.strip())
 
-    env = dict(os.environ)
-    env.setdefault("PDK_ROOT", str(Path.home() / ".ciel"))
-
     try:
         prov = probe(root, klt_cmd)
     except RuntimeError as e:
         print(f"probe failed, nothing recorded: {e}", file=sys.stderr)
-        print("run scripts/setup-env.sh --check-flow (and --fetch-pdk on a cold host)",
+        print("(scripts/setup-env.sh --fetch-pdk provisions a cold host)",
               file=sys.stderr)
         return 1
 
@@ -403,7 +383,7 @@ def main(argv: list[str]) -> int:
             log.append(f"== {verb}: SKIPPED (missing inputs: {', '.join(missing)})")
             hard_failed = True
             continue
-        argv = stage_argv(klt_cmd, verb, root)
+        argv = stage_argv(klt_cmd, verb)
         log.append(f"== {verb}: {' '.join(display_cmd(argv, root))}")
         r = run(argv, env=env, cwd=str(root))
         log.append(f"   exit {r.returncode}")
