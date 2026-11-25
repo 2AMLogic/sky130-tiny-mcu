@@ -9,6 +9,20 @@ _None yet._
 
 ## Log
 
+### 2026-11-25
+
+- **PR #48**: fix: derive run_flow_smoke PDK variant from setup-env.sh pin
+- **PR #46**: refactor: delegate run_flow_smoke's pin checks to setup-env.sh --check-flow
+- **Issue #47** (closed): Nothing ties run_flow_smoke.py's PDK_VARIANT to setup-env.sh's PIN_PDK_VARIANT
+- **Issue #45** (closed): Remove duplicate flow-pin check from verification/tools/run_flow_smoke.py: delegate preflight to scripts/setup-env.sh --check-flow
+
+### 2026-11-24
+
+- **PR #44**: fix: fail --check-flow on an empty klt_required_commands list
+- **PR #42**: fix: read klt_required_commands once and fail when the field is missing
+- **Issue #43** (closed): An empty klt_required_commands list still passes the flow preflight with an empty success line
+- **Issue #40** (closed): Read the required KLT command list once in the flow preflight
+
 ### 2026-11-22
 
 - **PR #33**: flow-smoke: pair netlist_sha256 with a banner-normalised hash; record the banner-cause finding
