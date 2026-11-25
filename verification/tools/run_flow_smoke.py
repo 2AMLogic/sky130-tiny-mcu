@@ -93,7 +93,18 @@ STAGE_INPUTS = {
     "lvs": ("flow/build/smoke/pnr/smoke.gds", "flow/build/smoke/pnr/smoke.v"),
     "erc": ("flow/build/smoke/pnr/smoke.gds",),
 }
-PDK_VARIANT = "sky130A"
+
+
+def pin_pdk_variant(setup_env: Path) -> str:
+    """The PDK variant, read from scripts/setup-env.sh (the single pin source)."""
+    m = re.search(r'^PIN_PDK_VARIANT="([^"]+)"', setup_env.read_text(), re.M)
+    if not m:
+        raise RuntimeError(f"PIN_PDK_VARIANT not found in {setup_env}")
+    return m.group(1)
+
+
+PDK_VARIANT = pin_pdk_variant(
+    Path(__file__).resolve().parent.parent.parent / "scripts" / "setup-env.sh")
 SCRATCH = "flow/build/smoke"
 RECORD_KIND = "flow-smoke"
 
