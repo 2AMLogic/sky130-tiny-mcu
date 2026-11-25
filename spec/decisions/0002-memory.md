@@ -11,9 +11,9 @@
 ## Context
 
 The draft fixes 256 bytes with a 1 KB stretch but no implementation. SERV's
-Servile arrangement (record 0001) puts the GPR + CSR storage, the program
-and the data in **one single-port memory**, so the RAM must be sized to hold
-the register file too. The candidate implementations on sky130 are a
+Servile wrapper exposes register-file (RF) and memory ports. This design
+combines them in one array using the adapter below, following the upstream
+Subservient single-memory design. The candidate implementations on sky130 are a
 standard-cell flop array, a latch array, or an SRAM macro. Numbers below are
 measured from the installed sky130A PDK on this host
 (`open_pdks` commit `c6d73a35f524070e85faff4a6a9eef49553ebc2b`, volare root,
@@ -38,8 +38,8 @@ assumed):
 
 | Configuration | Bits | Raw cell area, flops (dfxtp_1) | Raw cell area, latches (dlxtp_1) |
 |---|---|---|---|
-| Register file (16 × 32 b) | 512 | 0.010 mm² | 0.008 mm² |
-| 128 B | 1,024 | 0.021 mm² | 0.015 mm² |
+| RF within target array (32 GPR + 4 CSR slots, 32 bits each) | 1,152 | 0.0231 mm² | 0.0173 mm² |
+| 128 B (too small for the RF) | 1,024 | 0.021 mm² | 0.015 mm² |
 | **256 B (target)** | 2,048 | **0.041 mm²** | 0.031 mm² |
 | 512 B | 4,096 | 0.082 mm² | 0.062 mm² |
 | 1 KB (draft stretch) | 8,192 | **0.164 mm²** | 0.123 mm² |
@@ -51,30 +51,48 @@ carried as a dead row.
 
 ## Decision
 
-1. **RAM: 256 bytes, single port, one array** holding the register file
-   (GPRs + SERV's CSR storage, Servile arrangement, record 0001) and the
-   program + data. User-visible program+data is the remaining 192 B after
-   the RF region.
-2. **Implementation: standard-cell flop array** synthesized from generated
-   RTL (a wrapper around SERV's own `serv_rf_ram` memory side; the RF-in-RAM
-   glue is exactly what the pinned Servile wrapper provides). The flop
-   choice follows from the table: the target size costs ≈ 0.041 mm² raw
-   cells, the single affordable point on the ladder.
-3. **Memory map** (matches SERV/Servile's split — `doc/servile.rst`: memory
-   below `0x40000000`, external accesses above):
+1. **One 256 × 8 single-port flop array.** Configure upstream `servile`
+   with `width=1`, `rf_width=8`, `with_csr=1`, `reset_pc=0`.
+   It exposes the RF port of `serv_rf_ram_if` and the arbitrated instruction/data
+   bus. Connect both to `servile_rf_mem_if` with `depth=256`, `rf_regs=36`.
+   On an enabled read, register the addressed byte. On writes and idle
+   cycles, hold the last read byte. The adapter can stall partway through
+   a word fetch for an RF write and still needs the previously read byte.
+   Test consecutive CSR instructions that stall a fetch, assert mutually
+   exclusive read/write enables, and check for one array in synthesis. The
+   boot mux owns the write port while the core is held in reset.
+2. **Physical address allocation.** The RF has 32 GPR slots (including x0)
+   plus four CSR storage slots. At four bytes each it occupies 144 B.
+   The adapter complements the zero-extended RF byte index. With eight
+   address bits, indices 0 through 143 map from `0xFF` down to `0x70`.
+   A CPU word access uses its ordinary little-endian byte addresses.
 
-   | Region | Base | Size | Contents |
+   | Region | First byte | Last byte | Use |
    |---|---|---|---|
-   | RAM (RF + program + data) | `0x0000_0000` | 256 B | RF region first (`0x0000_0000`–`0x0000_003F`), then program/data |
-   | Peripherals | `0x4000_0000` | 4 KB window | UART, timer, GPIO — maps in record 0004 |
+   | Firmware | `0x00` | `0x6F` | 112 B for instructions, constants, data, BSS and downward-growing stack together. Entry at 0. Initial stack top may be 0x70 (exclusive). |
+   | Private RF | `0x70` | `0xFF` | 144 B accessible on the RF port. Boot writes and CPU bus accesses are excluded. |
+   | Peripherals | `0x4000_0000` | `0x4000_0FFF` | Word-aligned registers in record 0004. |
 
-   Reset vector `RESET_PC = 0x0000_0000` (SERV parameter, record 0001), so
-   the boot copy lands at the fetch address (record 0003).
-4. **Fallback: 128 B** (0.021 mm² raw), taken only by a new decision record
-   if the measured post-route area of the 256 B build misses the AREA row.
-5. **Stretch: 512 B, latch-based** (0.062 mm² raw), only if a measured
-   post-route build stays within the AREA row; latches need scan/clock
-   discipline work in the flow, so this is measured, not assumed.
+   The MCU wrapper decodes the full bus address before truncating it for the
+   adapter. A bus access outside firmware or an implemented register is
+   acknowledged, reads zero and discards writes. This prevents an alias of
+   the RF or low RAM. The linker must fit the whole firmware working set.
+   Reset sets the PC to 0. Firmware initializes registers and trap state
+   before use. The RF need not be cleared by the loader, and x0 reads zero.
+3. **Fallback implementation.** A 256 B latch array keeps the same RF,
+   image and software map. Use it only with verified latch timing and a
+   measured layout. A 128 B array is 16 B short of the RF alone.
+4. **Capacity stretch.** A 512 B latch build must meet the 0.10 mm² target.
+   The complemented RF indices occupy `0x170–0x1FF`, leaving 368 B below.
+   Its boot image fills that larger firmware region. For the separate
+   CSR-disabled variant, keep the same firmware boundary and reserve the
+   16 unused RF bytes so that its boot format stays compatible.
+
+The sizing and translation follow the pinned RTL, read 2026-11-25.
+[Servile parameters](https://github.com/olofk/serv/blob/f200eb2ed7b69ac1c6b8eddd47654522aeee5ce8/servile/servile.v),
+[RF size](https://github.com/olofk/serv/blob/f200eb2ed7b69ac1c6b8eddd47654522aeee5ce8/rtl/serv_rf_ram.v),
+[byte-address arbitration](https://github.com/olofk/serv/blob/f200eb2ed7b69ac1c6b8eddd47654522aeee5ce8/servile/servile_rf_mem_if.v),
+[Serving integration example](https://github.com/olofk/serv/blob/f200eb2ed7b69ac1c6b8eddd47654522aeee5ce8/serving/serving.v).
 
 ## Alternatives considered
 
@@ -85,23 +103,19 @@ carried as a dead row.
   macro-based SoC can afford this because its budget is 3.8 mm²; this
   block's is 0.10 mm².
 - **Latch array at 256 B as the target.** Rejected for the target row, kept
-  as the 512 B stretch vehicle: dlxtp_1 saves ≈ 25 % of the array raw area
-  but needs transparent-latch timing discipline in the flow before it can
-  be trusted; the flop array reaches the target with standard
-  positive-edge-triggered timing.
-- **Split RF (own array) + 256 B main RAM.** Rejected: adds ≈ 0.010 mm² of
-  flops and a second memory port for no capacity gain; the Servile
-  single-array arrangement is the pinned upstream's own ASIC pattern
-  (Subservient: "single-port SRAM for SERV's register file, data and
-  instruction memories").
+  as the fallback and for the 512 B stretch. The dlxtp_1 saves about 25%
+  of raw storage area. Its transparent phase needs timing verification.
+- **Split RF (own array) + 256 B main RAM.** Rejected: adds ≈ 0.0231 mm² of
+  storage flops to gain 144 B of firmware capacity. The shared adapter
+  allows one physical array to serve both ports within the area budget.
 - **1 KB stretch.** Dropped with the arithmetic above (0.164 mm² raw flops
   > 0.10 mm² budget).
 
 ## Consequences
 
-- Program + data budget is **192 B** — this, not the RAM row alone, is the
+- Program + data budget is **112 B** — this, not the RAM row alone, is the
   binding software constraint, and it feeds record 0003 (boot) and 0007
-  (compliance harness sizing).
+  (production-map execution check).
 - Register accesses take memory cycles (bit-serial RF through the shared
   array), deepening SERV's already-large cycle counts; accepted, since the
   block's performance contract is "control tasks at ≥ 16 MHz", not MIPS.

@@ -35,14 +35,22 @@ commit, record 0001):
    `i_timer_irq`. No capture input, no prescaler, no second channel.
    Software timing/auto-baud (below) reads the counter directly.
 2. **UART: one instance, 8N1, TX + RX**, programmable 16×-oversample-style
-   divisor; the RX line level is readable as one status bit so software can
-   measure the incoming bit period with the timer **before** a divisor is
+   receiver. DIVISOR holds system-clock cycles per serial bit. The RX level
+   is readable as a status bit so software can measure the incoming bit period with the timer **before** a divisor is
    programmed (host auto-baud, runtime). TX/RX are polled; the UART raises
    no interrupt. TX pacing is by the **tx-ready status bit** (below), so
-   polled TX never needs open-loop timing against an uncalibrated clock.
+   firmware waits until the shift register is idle. A measured divisor is
+   valid only while the combined host/receiver bit-period error (including quantization and ROSC
+   drift) stays within a proposed ±2%. Retrain with a known pattern after
+   clock-source or operating-point changes, between boot attempts and before
+   that budget expires during runtime. Qualify rates using the actual SERV
+   polling loop, synchronized RX, worst sampling latency and 8N1 framing
+   over the specified interval. Until then there is no guaranteed baud rate
+   or PVT-wide accuracy. TX uses pin 5 when selected in PINMUX (0005).
 3. **GPIO: 4 bits** (the post-boot flash pins of record 0005), per-pin
    output enable, output register, input register with a 2-FF synchronizer.
-   No per-pin interrupts.
+   Reset clears OE and OUT. Board use must follow the CS#/CIPO restrictions
+   of record 0005. There are no per-pin interrupts.
 4. **Register map** (peripheral window `0x4000_0000`–`0x4000_0FFF`,
    record 0002; unmapped addresses read `0` and ignore writes — never hang,
    the bit-serial bus has no error return):
@@ -57,9 +65,13 @@ commit, record 0001):
    | `0x4000_0200` | GPIO | `OUT` | 4 | |
    | `0x4000_0204` | GPIO | `OE` | 4 | 1 = output |
    | `0x4000_0208` | GPIO | `IN` | 4 | synchronized inputs |
+   | `0x4000_020C` | GPIO | `PINMUX` | 2 | bit 0 routes UART TX to pin 5, overriding GPIO2 OE/OUT. Bit 1 selects the external clock on pin 3 and forces GPIO0 input. Both reset to 0. |
 
-   (Offsets are word-aligned byte offsets; this is the contract the cocotb
-   peripheral testbenches and the firmware build are written against.)
+   The TX select bit frees pin 8 for reset. The clock select bit enables
+   the external source on pin 3. Both bits share one register
+   in the GPIO block. Switch TX ownership only when TX is
+   idle and CS# high. The cocotb peripheral tests and production firmware
+   use these word-aligned addresses.
 5. **Deliberately absent** — each absence is the area decision:
    - **Watchdog / second timer** — any WDT is a second timer; the block's
      size claim is the product, so exactly one.
@@ -102,5 +114,6 @@ commit, record 0001):
   feed the AREA row; no peripheral exists that is not in this record.
 - The register map above is frozen by ratification; changes are new
   decision records, so firmware written against it stays valid.
-- The compliance firmware (record 0007) targets exactly these registers
-  plus the RAM map of record 0002.
+- Exercise timer IRQ entry, compare-write acknowledgement and return, and
+  UART ready, divisor and framing in the peripheral bench. The MCU smoke
+  firmware in record 0007 targets these registers and the RAM map of 0002.

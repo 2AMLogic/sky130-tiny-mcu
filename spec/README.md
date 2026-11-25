@@ -1,6 +1,6 @@
 # spec
 
-Ratified specification and decision records for the sky130-tiny-mcu block.
+Proposed specification and decision records for the sky130-tiny-mcu block.
 
 - **[target-spec.md](target-spec.md)** — the parameter table (target /
   fallback / stretch / verification per row), pin mux, memory map, and the

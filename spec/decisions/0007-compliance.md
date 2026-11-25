@@ -61,14 +61,34 @@ M-mode-only core does not implement.
    skipping. `ecall`/`ebreak`/misaligned-trap tests apply and must pass
    (`WITH_CSR=1` gives machine traps; the fallback `WITH_CSR=0` build
    reduces the compliance target to `I` + `Zifencei`).
-6. **Test-program build: copied from sky130-riscv-soc**, pinned
-   **`e1135913b57ebf0cd57a7882772545fedb7291d0`** (2026-11-19): the cocotb
-   + Icarus harness pattern from its `verification/` tree and the
-   test-program build from its `firmware/` tree, adapted to this block's
-   register map (record 0004) and 192 B program budget (record 0002).
-7. **Evidence rule**: a compliance claim exists only as a recorded run in
-   `verification/records/` (append-only) with the command path, suite pin,
-   golden-model pin, and pass/fail per test group.
+6. **ISA harness memory.** Run each applicable ELF on the pinned SERV
+   configuration in a simulation harness with private RF and testbench
+   instruction/data RAM. Map the ELF at its linked addresses, including
+   trap code, BSS and the entire writable signature. Size the testbench
+   backing store from the ELF load segments and linker symbols, assert all
+   accesses are in range, and reject overlaps or truncation. Keep the same
+   ISA/CSR settings in the core. Provide plugin startup code at its reset
+   vector that reaches the linked test entry. The RV32
+   `signature_x1_0` in ADD alone reserves 512 words (2,048 B). Compare
+   the bytes between the plugin's signature symbols against SAIL and report
+   the ELF/map, addresses, size and result per test. This grades the core
+   ISA on a simulation platform. [Pinned ADD source, read 2026-11-25](https://github.com/riscv/riscv-arch-test/blob/9bceaf5c02fa1131625bc6228b834e9e884c5801/riscv-test-suite/rv32i_m/I/src/add-01.S#L3012).
+7. **MCU integration check.** Separately use the cocotb/Icarus and firmware
+   build pattern from sky130-riscv-soc at
+   `e1135913b57ebf0cd57a7882772545fedb7291d0` (read 2026-11-19).
+   Link a freestanding RV32 image with entry 0 and a 112 B region. Enforce
+   a linker assertion for text, rodata, data, BSS and reserved stack, and
+   zero-pad the binary to 112 B. Boot it once by SPI and once by UART into
+   the real 256 B shared array, with no testbench memory extension or
+   preload. Check the last byte write, first fetch at zero, high-GPR and
+   CSR round trips, and a known result written by the running program
+   to a GPIO register. Check protected RF/bus boundaries in the memory
+   bench. Record the link map, image hash and both traces separately
+   from ISA signatures.
+8. **Evidence rule.** Archive the command path, RTL/suite/model/tool pins,
+   ISA configuration and per-test pass/fail or justified exclusions in
+   `verification/records/`. Publish a product boot/execution pass only when
+   both small-image runs pass on the MCU map.
 
 ## Alternatives considered
 

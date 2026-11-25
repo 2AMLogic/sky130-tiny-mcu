@@ -26,12 +26,13 @@ Reference points, all read **2026-11-19**:
 | Signoff corners shipped by the PDK | at least `tt_025C_1v80`, `ss_100C_1v60`, `ff_n40C_1v95` liberty files | `libs.ref/sky130_fd_sc_hd/lib/` listing, PDK commit `c6d73a35…` (record 0002) |
 | Sibling SoC budget for contrast | 3.8 mm² core budget, 16 KB SRAM | sky130-riscv-soc `spec/soc.md`, read 2026-11-19 |
 
-Draft budget sanity (raw cells, from record 0002's measured cell areas):
-core ≈ 0.008 mm² (indicative GE re-read) + RAM 256 B ≈ 0.041 mm² + boot FSM
-+ peripherals + clock ring — the 0.10 mm² row is plausible and the 0.05 mm²
-stretch is reachable only with the latch-RAM/128 B configuration of record
-0002. This stays arithmetic, not a claim: no area number is *ours* until a
-committed flow report says so.
+Using the raw cell areas of record 0002, the indicative core estimate is
+≈ 0.008 mm². The 256 B array costs ≈ 0.0410 mm² in flops or ≈ 0.03075 mm²
+in latches, including the 144 B RF
+in either case. Decode, arbitration, reset logic, boot FSM, peripherals,
+clock ring, placement and routing still have to fit. The 0.05 mm² stretch
+leaves only ≈ 0.011 mm² after the core estimate and latch bits. Its
+feasibility requires a routed measurement.
 
 ## Decision
 
@@ -61,9 +62,11 @@ committed flow report says so.
    result; recorded results are append-only evidence.
 4. **AREA row targets** (unchanged from the draft, now method-bound):
    target ≤ **0.10 mm²** post-route core area for the full MCU; fallback
-   ≤ **0.15 mm²**; stretch ≤ **0.05 mm²** (requires the record-0002
-   latch/128 B configuration — the stretch is a different build, and says
-   so wherever it is quoted).
+   ≤ **0.15 mm²** for the full target MCU. The ≤ **0.05 mm²** stretch
+   must demonstrate the same 256 B capacity, 112 B usable map and enabled
+   CSRs with the latch implementation. Publish the configuration and verify
+   latch timing, DRC and LVS alongside its measured area. Report the external
+   boot flash and board reset source alongside any system comparison.
 5. **Claim language rule**: the words "smallest", "world's smallest", or
    any comparative size claim appear in this repo only together with the
    measured post-route area of item 1 and the comparison set of item 2.
