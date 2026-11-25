@@ -6,7 +6,7 @@ The body below is a snapshot of GitHub label state as of the last merged docs-ma
 
 <!-- Maintained automatically by the Guide triage agent. Manual edits are fine but may be overwritten. -->
 <!-- guide:plan-body:start -->
-_Generated: 2026-11-23T21:25:00Z (snapshot; compare against live labels)_
+_Generated: 2026-11-25T18:14:10Z (snapshot; compare against live labels)_
 ## Operator Attention: Merge-Risk-Hold Pileup
 
 Judge-approved PRs under a hold (`loom:blocked` or `loom:operator`) — only a human merge decision is missing.
@@ -23,19 +23,19 @@ _None._
 
 `loom:important`; taken before unlabelled work.
 
-_None._
+- **#1**: Draft and ratify the target spec
 
 ## Ready
 
 Human-approved issues (`loom:issue`) ready for implementation — excluding held (`loom:blocked`/`loom:operator`/`loom:frozen`), `loom:building`, and issues closed by an open `loom:pr` PR (listed under Approved).
 
-- **#40**: Read the required KLT command list once in the flow preflight
+_None._
 
 ## In Progress
 
 Issues currently being built (`loom:building`).
 
-- **#1**: Draft and ratify the target spec
+_None._
 
 ## PRs Awaiting Review
 
@@ -69,9 +69,9 @@ _None._
 |------|-------|
 | Operator merge-risk holds | 1 |
 | Very important | 0 |
-| Important | 0 |
-| Ready (`loom:issue`, net of holds/building/merge-pending) | 1 |
-| In Progress (`loom:building`) | 1 |
+| Important | 1 |
+| Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
+| In Progress (`loom:building`) | 0 |
 | PRs awaiting review | 0 |
 | Approved PRs awaiting merge | 1 |
 | Curated | 1 |
