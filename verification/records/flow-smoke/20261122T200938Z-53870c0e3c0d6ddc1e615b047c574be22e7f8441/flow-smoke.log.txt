@@ -1,0 +1,25 @@
+klt: .venv/bin/klt
+commit: 53870c0e3c0d6ddc1e615b047c574be22e7f8441
+pdk: sky130A open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7
+== synthesize: .venv/bin/klt synthesize --format json --pdk sky130A flow/smoke/synth.json
+   exit 0
+   gates: PASS
+== place-and-route: .venv/bin/klt place-and-route --format json --pdk sky130A flow/smoke/par.json
+   exit 0
+   gates: PASS
+== sta: .venv/bin/klt sta --format json --pdk sky130A flow/smoke/sta.json
+   exit 0
+   gates: PASS
+== drc: .venv/bin/klt drc --format json flow/smoke/drc.json
+   exit 0
+   | klt: warning: resolved klayout engine version '0.30.13' differs from klayout==0.30.12, the version this klayout-tools build/commit was tested against -- DRC/LVS report counts (deck content hash, rules_skipped, category_counts, ...) may differ from a report generated with klayout==0.30.12, even though the verdict itself is unaffected. To reproduce the exact engine: `uv tool install "klayout-tools @ git+...@<sha>" --with klayout==0.30.12` -- see docs/json-contract.md's "Shared `provenance` block".
+   gates: PASS
+== lvs: .venv/bin/klt lvs --format json flow/smoke/lvs.json
+   exit 0
+   | klt: warning: resolved klayout engine version '0.30.13' differs from klayout==0.30.12, the version this klayout-tools build/commit was tested against -- DRC/LVS report counts (deck content hash, rules_skipped, category_counts, ...) may differ from a report generated with klayout==0.30.12, even though the verdict itself is unaffected. To reproduce the exact engine: `uv tool install "klayout-tools @ git+...@<sha>" --with klayout==0.30.12` -- see docs/json-contract.md's "Shared `provenance` block".
+   gates: PASS
+== erc: .venv/bin/klt erc --format json --top smoke --pdk sky130 --deck sky130 flow/build/smoke/pnr/smoke.gds flow/smoke/erc.json
+   exit 0
+   | klt erc: warning: stackup entry 'met2' declares label_layer 69/5, but that layer carries no text anywhere in the analysed top cell -- nets matched through it resolve zero islands (erc.unconnected_net) and its gates[].net reads null. Check the label layer/datatype.
+   | klt erc: warning: stackup entry 'met4' declares label_layer 71/5, but that layer carries no text anywhere in the analysed top cell -- nets matched through it resolve zero islands (erc.unconnected_net) and its gates[].net reads null. Check the label layer/datatype.
+   gates: PASS

@@ -30,6 +30,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Keep the default pull_request checkout: the refs/pull/N/merge
+          # tip, so smoke (the repo's only CI job) verifies the base+head
+          # merge result before it lands. Full history is what the stamp
+          # guard below needs — it judges
+          # `git log <base>..HEAD -- WORK_PLAN.md`, which must traverse
+          # merge topology, and refuses a shallow clone outright.
+          fetch-depth: 0
       - name: Install Icarus Verilog at the pinned version (source build)
         run: |
           pin="$(sed -n 's/^PIN_IVERILOG="\([^"]*\)".*/\1/p' scripts/setup-env.sh)"
@@ -71,3 +79,23 @@ jobs:
         run: |
           python3 -I verification/tools/lint_records.py
           python3 -I verification/tools/tests/test_lint_records.py
+          python3 -I verification/tools/tests/test_run_flow_smoke.py
+      - name: setup-env check-mode fixture test (issue #21)
+        # Hermetic: every tool is a stub, so this runs on the bare runner and
+        # pins both --check (simulation pins only, the shape this job needs)
+        # and --check-flow (fail, never skip, on a flow-pin problem).
+        run: |
+          scripts/tests/test-setup-env.sh
+      - name: WORK_PLAN stamp guard and its fixture test (issue #11)
+        run: |
+          scripts/tests/test-check-work-plan-stamp.sh
+          # Judge only the commits this event adds: the PR's range, the
+          # merge-queue entry's range, or the pushed commits on main. An
+          # empty or all-zero base (branch creation) falls back to judging
+          # HEAD's full history; a base that does not resolve is exit 2
+          # (loud), never a silent pass.
+          base='${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}'
+          if [[ "$base" =~ ^0+$ ]]; then
+            base=''
+          fi
+          scripts/check-work-plan-stamp.sh "$base"

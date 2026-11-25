@@ -6,12 +6,12 @@ The body below is a snapshot of GitHub label state as of the last merged docs-ma
 
 <!-- Maintained automatically by the Guide triage agent. Manual edits are fine but may be overwritten. -->
 <!-- guide:plan-body:start -->
-_Generated: 2026-11-19T05:58:57Z (snapshot; compare against live labels)_
+_Generated: 2026-11-25T18:14:10Z (snapshot; compare against live labels)_
 ## Operator Attention: Merge-Risk-Hold Pileup
 
 Judge-approved PRs under a hold (`loom:blocked` or `loom:operator`) — only a human merge decision is missing.
 
-_None._
+- **#6**: spec: draft target table and seven decision records
 
 ## Very Important
 
@@ -23,7 +23,7 @@ _None._
 
 `loom:important`; taken before unlabelled work.
 
-_None._
+- **#1**: Draft and ratify the target spec
 
 ## Ready
 
@@ -35,8 +35,7 @@ _None._
 
 Issues currently being built (`loom:building`).
 
-- **#1**: Draft and ratify the target spec
-- **#2**: Bootstrap the verification harness
+_None._
 
 ## PRs Awaiting Review
 
@@ -48,18 +47,17 @@ _None._
 
 PRs that passed review and are queued for Champion auto-merge (`loom:pr`).
 
-_None._
+- **#6**: spec: draft target table and seven decision records — closes #1
 
 ## Proposed
 
 Issues carrying `loom:curated`.
 
 - **#1**: Draft and ratify the target spec *(curated)*
-- **#2**: Bootstrap the verification harness *(curated)*
 
 ## Proposed (Architect / Hermit)
 
-_None._
+- **#12**: Remove or make honest the package.json stub: scripts exit 0 without checking anything *(hermit)* *(held)*
 
 ## Epics
 
@@ -69,14 +67,14 @@ _None._
 
 | Bucket | Count |
 |------|-------|
-| Operator merge-risk holds | 0 |
+| Operator merge-risk holds | 1 |
 | Very important | 0 |
-| Important | 0 |
+| Important | 1 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
-| In Progress (`loom:building`) | 2 |
+| In Progress (`loom:building`) | 0 |
 | PRs awaiting review | 0 |
-| Approved PRs awaiting merge | 0 |
-| Curated | 2 |
-| Architect / Hermit proposals | 0 |
+| Approved PRs awaiting merge | 1 |
+| Curated | 1 |
+| Architect / Hermit proposals | 1 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->

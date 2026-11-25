@@ -1,11 +1,18 @@
 # Single runner entry point for the cocotb + Icarus harness.
 #
-#   make -C verification smoke   harness smoke test on tests/smoke/ (a trivial
-#                                counter DUT, not design RTL), recorded under
-#                                records/smoke/
+#   make -C verification smoke        harness smoke test on tests/smoke/ (a
+#                                     trivial counter DUT, not design RTL),
+#                                     recorded under records/smoke/
+#   make -C verification flow-smoke   run the smoke DUT through the six
+#                                     implementation-flow verbs (synthesize,
+#                                     place-and-route, sta, drc, lvs, erc)
+#                                     via the pinned klt, gated and recorded
+#                                     under records/flow-smoke/. Toolchain
+#                                     evidence on a smoke DUT only -- no
+#                                     design claim, no block manifest.
 #
 # Copied by pattern from sky130-riscv-soc's verification/Makefile (source
-# commit in verification/README.md), cut down to the single target this block
+# commit in verification/README.md), cut down to the targets this block
 # needs while it has no design RTL yet. A new test directory under
 # tests/<name>/ adds a target the same way.
 # Needs cocotb (pinned in ../scripts/setup-env.sh) and iverilog on PATH.
@@ -28,6 +35,10 @@ endef
 SMOKE_BUILD := $(ROOT)/sim_build/smoke
 SMOKE_LOG := $(SMOKE_BUILD)/smoke.log
 
+# The recording step probes both tool versions before it creates anything
+# under records/: a failed probe exits 1 and writes nothing, so the records
+# tree never gains a directory with no provenance.json (lint_records.py
+# rejects one, and the append-only rule makes hand-deleting it awkward).
 .PHONY: smoke
 smoke:
 	$(CHECK_COCOTB)
@@ -40,14 +51,26 @@ smoke:
 	    SIM_BUILD=$(SMOKE_BUILD) >$(SMOKE_LOG) 2>&1 \
 	    || { tail -40 $(SMOKE_LOG) >&2; exit 1; }
 	@set -e; \
+	cocotb_run=$$($(PYTHON_BIN) -c 'import cocotb;print(cocotb.__version__)' 2>/dev/null) \
+	    || { echo "cannot probe the running cocotb version: not recording" >&2; exit 1; }; \
+	iverilog_run=$$(iverilog -V 2>/dev/null | sed -n 's/^Icarus Verilog version \([^ ]*\) .*/\1/p'); \
+	[ -n "$$iverilog_run" ] || { echo "cannot probe the running iverilog version: not recording" >&2; exit 1; }; \
 	ts=$$(date -u +%Y%m%dT%H%M%SZ); sha=$$(git rev-parse HEAD); \
 	while [ -e $(ROOT)/records/smoke/$${ts}-$${sha} ]; do sleep 1; ts=$$(date -u +%Y%m%dT%H%M%SZ); done; \
 	rec=$(ROOT)/records/smoke/$${ts}-$${sha}; mkdir -p $$rec; \
 	cp $(SMOKE_LOG) $$rec/smoke.log.txt; \
 	cp $(SMOKE_BUILD)/results.xml $$rec/results.xml; \
-	cocotb_run=$$($(PYTHON_BIN) -c 'import cocotb;print(cocotb.__version__)' 2>/dev/null) \
-	    || { echo "cannot probe the running cocotb version: not recording" >&2; exit 1; }; \
-	iverilog_run=$$(iverilog -V 2>/dev/null | sed -n 's/^Icarus Verilog version \([^ ]*\) .*/\1/p'); \
-	[ -n "$$iverilog_run" ] || { echo "cannot probe the running iverilog version: not recording" >&2; exit 1; }; \
 	$(PYTHON_BIN) -c 'import json,sys; rec,sha,coc,iv=sys.argv[1:]; json.dump({"commit":sha,"pdk_revision":"n/a, no PDK used (RTL simulation only)","tool_versions":{"cocotb":coc,"iverilog":iv},"command":"make -C verification smoke"}, open(rec+"/provenance.json","w"), indent=2); print("record:", rec)' $$rec "$$sha" "$$cocotb_run" "$$iverilog_run"; \
 	echo "smoke: PASS (record $$rec)"
+
+# The implementation-flow smoke run: request-driven through the pinned klt
+# (see ../flow/smoke/), gated on the six envelopes, recorded append-only.
+# The guard is the flow pin check -- PDK revision, klt, Yosys, OpenROAD --
+# which fails, never skips, on any mismatch or absence. run_flow_smoke.py
+# runs `scripts/setup-env.sh --check-flow` itself, so the pins are verified
+# once for both this target and a direct script invocation. It needs the
+# cold-start venv active for the cocotb pin. Heavy tools run here, not in
+# hosted CI (see README.md, "What CI runs").
+.PHONY: flow-smoke
+flow-smoke:
+	@cd $(ROOT)/.. && $(PYTHON_BIN) -I verification/tools/run_flow_smoke.py

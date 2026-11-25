@@ -1,0 +1,8 @@
+{
+  "schema": "klt.drc.request/1",
+  "file": "../build/smoke/pnr/smoke.gds",
+  "deck": "sky130",
+  "engine": "curated",
+  "top": "smoke",
+  "pdk": "sky130A"
+}

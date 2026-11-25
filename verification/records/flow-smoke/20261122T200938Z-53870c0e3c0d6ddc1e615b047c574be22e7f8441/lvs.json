@@ -1,0 +1,1191 @@
+{
+  "abstract_cells": [
+    "sky130_fd_sc_hd__*"
+  ],
+  "abstracted_cells": [
+    {
+      "cell": "sky130_fd_sc_hd__a31oi_1",
+      "instance_count": 1,
+      "lef_path": null,
+      "pin_count": 8,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__and4_1",
+      "instance_count": 1,
+      "lef_path": null,
+      "pin_count": 8,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__buf_4",
+      "instance_count": 3,
+      "lef_path": null,
+      "pin_count": 5,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__dfrtp_1",
+      "instance_count": 8,
+      "lef_path": null,
+      "pin_count": 7,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__fill_1",
+      "instance_count": 27,
+      "lef_path": null,
+      "pin_count": 3,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__fill_2",
+      "instance_count": 22,
+      "lef_path": null,
+      "pin_count": 3,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__fill_4",
+      "instance_count": 26,
+      "lef_path": null,
+      "pin_count": 3,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__fill_8",
+      "instance_count": 95,
+      "lef_path": null,
+      "pin_count": 3,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__inv_1",
+      "instance_count": 1,
+      "lef_path": null,
+      "pin_count": 5,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__nand2_1",
+      "instance_count": 2,
+      "lef_path": null,
+      "pin_count": 6,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__nand3_1",
+      "instance_count": 1,
+      "lef_path": null,
+      "pin_count": 7,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__nand4_1",
+      "instance_count": 1,
+      "lef_path": null,
+      "pin_count": 8,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__nor2_1",
+      "instance_count": 1,
+      "lef_path": null,
+      "pin_count": 6,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__tapvpwrvgnd_1",
+      "instance_count": 16,
+      "lef_path": null,
+      "pin_count": 2,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__xnor2_1",
+      "instance_count": 4,
+      "lef_path": null,
+      "pin_count": 6,
+      "resolution_source": "in_cell_labels"
+    },
+    {
+      "cell": "sky130_fd_sc_hd__xor2_1",
+      "instance_count": 2,
+      "lef_path": null,
+      "pin_count": 6,
+      "resolution_source": "in_cell_labels"
+    }
+  ],
+  "body_verification": {
+    "device_classes": [],
+    "device_count": 0,
+    "finding_count": 0,
+    "findings": [],
+    "reason": null,
+    "status": "verified"
+  },
+  "category_counts": {
+    "topology": 3,
+    "topology.power_only_pruned": 1,
+    "topology.reference_port_alias_joined": 8,
+    "topology.top_level_pins_anchored": 1
+  },
+  "category_error_counts": {},
+  "constant_nets_applied": null,
+  "counts": {
+    "devices": {
+      "layout": 0,
+      "matched": 0,
+      "reference": 0
+    },
+    "nets": {
+      "layout": 29,
+      "matched": 101,
+      "reference": 27
+    },
+    "pins": {
+      "layout": 29,
+      "matched": 101,
+      "reference": 10
+    }
+  },
+  "def_net_names": true,
+  "device_classes": [
+    "nfet",
+    "pfet",
+    "pnp",
+    "sky130_fd_pr__model__cap_mim",
+    "sky130_fd_pr__model__cap_mim_m4",
+    "resistor",
+    "diode_pw2nd_05v5",
+    "diode_pw2nd_05v5_lvt",
+    "diode_pw2nd_05v5_nvt",
+    "diode_pw2nd_11v0",
+    "diode_pd2nw_05v5",
+    "diode_pd2nw_05v5_lvt",
+    "diode_pd2nw_05v5_hvt",
+    "diode_pd2nw_11v0"
+  ],
+  "device_parameter_coverage": [],
+  "engine": "klayout",
+  "environment": {
+    "engine": "klayout",
+    "engine_version": "0.30.13",
+    "extracted_netlist": null,
+    "layout_sha256": "abbf4d806eaa629b6461935ee48496cd8305a990024bd5962345f979657b92b1",
+    "netgen_binary": null,
+    "reference_sha256": "aec82ceb0c278ceaf3f1be4567785f6b66f10be00d9ecbc3cbeb79f9df21bef2"
+  },
+  "error_count": 0,
+  "hints_applied": null,
+  "layout": {
+    "path": "flow/build/smoke/pnr/smoke.gds",
+    "scope": "repo"
+  },
+  "mismatch_count": 13,
+  "mismatches": [
+    {
+      "category": "topology",
+      "circuit": null,
+      "description": "device class has no counterpart on the other side, but no devices of this class were extracted either -- not a real topology mismatch: 'nfet'",
+      "details": null,
+      "device": {
+        "class": "nfet",
+        "layout": null,
+        "reference": null
+      },
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "layout",
+      "subcircuit": null
+    },
+    {
+      "category": "topology",
+      "circuit": null,
+      "description": "device class has no counterpart on the other side, but no devices of this class were extracted either -- not a real topology mismatch: 'pfet'",
+      "details": null,
+      "device": {
+        "class": "pfet",
+        "layout": null,
+        "reference": null
+      },
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "layout",
+      "subcircuit": null
+    },
+    {
+      "category": "topology",
+      "circuit": null,
+      "description": "device class has no counterpart on the other side, but no devices of this class were extracted either -- not a real topology mismatch: 'pnp'",
+      "details": null,
+      "device": {
+        "class": "pnp",
+        "layout": null,
+        "reference": null
+      },
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "layout",
+      "subcircuit": null
+    },
+    {
+      "category": "topology.power_only_pruned",
+      "circuit": null,
+      "description": "removed layout-side circuit(s) whose every declared pin is a power/ground pin of the reference library (a pin the library declares but the gate-level-Verilog reference never carries), and every instance of them, before comparing -- 5 circuit(s): sky130_fd_sc_hd__fill_1, sky130_fd_sc_hd__fill_2, sky130_fd_sc_hd__fill_4, sky130_fd_sc_hd__fill_8, sky130_fd_sc_hd__tapvpwrvgnd_1 (see docs/cli/lvs.md, \"topology.power_only_pruned\")",
+      "details": null,
+      "device": null,
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "layout",
+      "subcircuit": null
+    },
+    {
+      "category": "topology.reference_port_alias_joined",
+      "circuit": {
+        "layout": null,
+        "reference": "smoke"
+      },
+      "description": "reference circuit 'smoke' declared port(s) count[0] via a plain 'assign <port> = ...;' alias (request.reference.form: \"gate-level-verilog\") -- joined onto the same net as 'count_r[0]' before comparing, matching a layout with a single physical net for these names, instead of reporting them as unmatched (see docs/cli/lvs.md, \"topology.reference_port_alias_joined\")",
+      "details": {
+        "aliased_ports": [
+          "count[0]"
+        ],
+        "canonical_net": "count_r[0]"
+      },
+      "device": null,
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "reference",
+      "subcircuit": null
+    },
+    {
+      "category": "topology.reference_port_alias_joined",
+      "circuit": {
+        "layout": null,
+        "reference": "smoke"
+      },
+      "description": "reference circuit 'smoke' declared port(s) count[1] via a plain 'assign <port> = ...;' alias (request.reference.form: \"gate-level-verilog\") -- joined onto the same net as 'count_r[1]' before comparing, matching a layout with a single physical net for these names, instead of reporting them as unmatched (see docs/cli/lvs.md, \"topology.reference_port_alias_joined\")",
+      "details": {
+        "aliased_ports": [
+          "count[1]"
+        ],
+        "canonical_net": "count_r[1]"
+      },
+      "device": null,
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "reference",
+      "subcircuit": null
+    },
+    {
+      "category": "topology.reference_port_alias_joined",
+      "circuit": {
+        "layout": null,
+        "reference": "smoke"
+      },
+      "description": "reference circuit 'smoke' declared port(s) count[2] via a plain 'assign <port> = ...;' alias (request.reference.form: \"gate-level-verilog\") -- joined onto the same net as 'count_r[2]' before comparing, matching a layout with a single physical net for these names, instead of reporting them as unmatched (see docs/cli/lvs.md, \"topology.reference_port_alias_joined\")",
+      "details": {
+        "aliased_ports": [
+          "count[2]"
+        ],
+        "canonical_net": "count_r[2]"
+      },
+      "device": null,
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "reference",
+      "subcircuit": null
+    },
+    {
+      "category": "topology.reference_port_alias_joined",
+      "circuit": {
+        "layout": null,
+        "reference": "smoke"
+      },
+      "description": "reference circuit 'smoke' declared port(s) count[3] via a plain 'assign <port> = ...;' alias (request.reference.form: \"gate-level-verilog\") -- joined onto the same net as 'count_r[3]' before comparing, matching a layout with a single physical net for these names, instead of reporting them as unmatched (see docs/cli/lvs.md, \"topology.reference_port_alias_joined\")",
+      "details": {
+        "aliased_ports": [
+          "count[3]"
+        ],
+        "canonical_net": "count_r[3]"
+      },
+      "device": null,
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "reference",
+      "subcircuit": null
+    },
+    {
+      "category": "topology.reference_port_alias_joined",
+      "circuit": {
+        "layout": null,
+        "reference": "smoke"
+      },
+      "description": "reference circuit 'smoke' declared port(s) count[4] via a plain 'assign <port> = ...;' alias (request.reference.form: \"gate-level-verilog\") -- joined onto the same net as 'count_r[4]' before comparing, matching a layout with a single physical net for these names, instead of reporting them as unmatched (see docs/cli/lvs.md, \"topology.reference_port_alias_joined\")",
+      "details": {
+        "aliased_ports": [
+          "count[4]"
+        ],
+        "canonical_net": "count_r[4]"
+      },
+      "device": null,
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "reference",
+      "subcircuit": null
+    },
+    {
+      "category": "topology.reference_port_alias_joined",
+      "circuit": {
+        "layout": null,
+        "reference": "smoke"
+      },
+      "description": "reference circuit 'smoke' declared port(s) count[5] via a plain 'assign <port> = ...;' alias (request.reference.form: \"gate-level-verilog\") -- joined onto the same net as 'count_r[5]' before comparing, matching a layout with a single physical net for these names, instead of reporting them as unmatched (see docs/cli/lvs.md, \"topology.reference_port_alias_joined\")",
+      "details": {
+        "aliased_ports": [
+          "count[5]"
+        ],
+        "canonical_net": "count_r[5]"
+      },
+      "device": null,
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "reference",
+      "subcircuit": null
+    },
+    {
+      "category": "topology.reference_port_alias_joined",
+      "circuit": {
+        "layout": null,
+        "reference": "smoke"
+      },
+      "description": "reference circuit 'smoke' declared port(s) count[6] via a plain 'assign <port> = ...;' alias (request.reference.form: \"gate-level-verilog\") -- joined onto the same net as 'count_r[6]' before comparing, matching a layout with a single physical net for these names, instead of reporting them as unmatched (see docs/cli/lvs.md, \"topology.reference_port_alias_joined\")",
+      "details": {
+        "aliased_ports": [
+          "count[6]"
+        ],
+        "canonical_net": "count_r[6]"
+      },
+      "device": null,
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "reference",
+      "subcircuit": null
+    },
+    {
+      "category": "topology.reference_port_alias_joined",
+      "circuit": {
+        "layout": null,
+        "reference": "smoke"
+      },
+      "description": "reference circuit 'smoke' declared port(s) count[7] via a plain 'assign <port> = ...;' alias (request.reference.form: \"gate-level-verilog\") -- joined onto the same net as 'count_r[7]' before comparing, matching a layout with a single physical net for these names, instead of reporting them as unmatched (see docs/cli/lvs.md, \"topology.reference_port_alias_joined\")",
+      "details": {
+        "aliased_ports": [
+          "count[7]"
+        ],
+        "canonical_net": "count_r[7]"
+      },
+      "device": null,
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "reference",
+      "subcircuit": null
+    },
+    {
+      "category": "topology.top_level_pins_anchored",
+      "circuit": null,
+      "description": "2 top-level pin name(s) declared on both sides were anchored by name before comparing (options.anchor_top_level_pins): each one's layout net is asserted to match the reference net of the same-named pin, which the comparer's own topology-only net pairing does not otherwise require. Without it, two boundary nets with identical topology (e.g. two bits of a black-box macro's bus) are interchangeable and a swap between them compares clean -- see docs/cli/lvs.md, \"Top-level pin anchoring\"",
+      "details": {
+        "layout_only_pin_count": 27,
+        "layout_only_pins": [
+          "CLKNET_0_CLK",
+          "CLKNET_1_0__LEAF_CLK",
+          "CLKNET_1_1__LEAF_CLK",
+          "COUNT_R[0]",
+          "COUNT_R[1]",
+          "COUNT_R[2]",
+          "COUNT_R[3]",
+          "COUNT_R[4]",
+          "COUNT_R[5]",
+          "COUNT_R[6]",
+          "COUNT_R[7]",
+          "VDD",
+          "VSS",
+          "_00_",
+          "_01_",
+          "_02_",
+          "_03_",
+          "_04_",
+          "_05_",
+          "_06_[0]"
+        ],
+        "layout_only_pins_truncated": true,
+        "pin_count": 2,
+        "pins": [
+          "CLK",
+          "RST_N"
+        ],
+        "pins_truncated": false
+      },
+      "device": null,
+      "instance": null,
+      "net": null,
+      "property": null,
+      "severity": "warning",
+      "side": "both",
+      "subcircuit": null
+    }
+  ],
+  "net_correspondence": [
+    {
+      "heuristic": true,
+      "layout": "VDD",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VGND",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPB",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VPWR",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": true,
+      "layout": "VSS",
+      "pin": true,
+      "reference": null
+    },
+    {
+      "heuristic": false,
+      "layout": "A",
+      "pin": true,
+      "reference": "A"
+    },
+    {
+      "heuristic": false,
+      "layout": "A",
+      "pin": true,
+      "reference": "A"
+    },
+    {
+      "heuristic": false,
+      "layout": "A",
+      "pin": true,
+      "reference": "A"
+    },
+    {
+      "heuristic": false,
+      "layout": "A",
+      "pin": true,
+      "reference": "A"
+    },
+    {
+      "heuristic": false,
+      "layout": "A",
+      "pin": true,
+      "reference": "A"
+    },
+    {
+      "heuristic": false,
+      "layout": "A",
+      "pin": true,
+      "reference": "A"
+    },
+    {
+      "heuristic": false,
+      "layout": "A",
+      "pin": true,
+      "reference": "A"
+    },
+    {
+      "heuristic": false,
+      "layout": "A",
+      "pin": true,
+      "reference": "A"
+    },
+    {
+      "heuristic": false,
+      "layout": "A",
+      "pin": true,
+      "reference": "A"
+    },
+    {
+      "heuristic": false,
+      "layout": "A1",
+      "pin": true,
+      "reference": "A1"
+    },
+    {
+      "heuristic": false,
+      "layout": "A2",
+      "pin": true,
+      "reference": "A2"
+    },
+    {
+      "heuristic": false,
+      "layout": "A3",
+      "pin": true,
+      "reference": "A3"
+    },
+    {
+      "heuristic": false,
+      "layout": "B",
+      "pin": true,
+      "reference": "B"
+    },
+    {
+      "heuristic": false,
+      "layout": "B",
+      "pin": true,
+      "reference": "B"
+    },
+    {
+      "heuristic": false,
+      "layout": "B",
+      "pin": true,
+      "reference": "B"
+    },
+    {
+      "heuristic": false,
+      "layout": "B",
+      "pin": true,
+      "reference": "B"
+    },
+    {
+      "heuristic": false,
+      "layout": "B",
+      "pin": true,
+      "reference": "B"
+    },
+    {
+      "heuristic": false,
+      "layout": "B",
+      "pin": true,
+      "reference": "B"
+    },
+    {
+      "heuristic": false,
+      "layout": "B",
+      "pin": true,
+      "reference": "B"
+    },
+    {
+      "heuristic": false,
+      "layout": "B1",
+      "pin": true,
+      "reference": "B1"
+    },
+    {
+      "heuristic": false,
+      "layout": "C",
+      "pin": true,
+      "reference": "C"
+    },
+    {
+      "heuristic": false,
+      "layout": "C",
+      "pin": true,
+      "reference": "C"
+    },
+    {
+      "heuristic": false,
+      "layout": "C",
+      "pin": true,
+      "reference": "C"
+    },
+    {
+      "heuristic": false,
+      "layout": "CLK",
+      "pin": true,
+      "reference": "CLK"
+    },
+    {
+      "heuristic": false,
+      "layout": "clk",
+      "pin": true,
+      "reference": "CLK"
+    },
+    {
+      "heuristic": false,
+      "layout": "clknet_0_clk",
+      "pin": true,
+      "reference": "CLKNET_0_CLK"
+    },
+    {
+      "heuristic": false,
+      "layout": "clknet_1_0__leaf_clk",
+      "pin": true,
+      "reference": "CLKNET_1_0__LEAF_CLK"
+    },
+    {
+      "heuristic": false,
+      "layout": "clknet_1_1__leaf_clk",
+      "pin": true,
+      "reference": "CLKNET_1_1__LEAF_CLK"
+    },
+    {
+      "heuristic": false,
+      "layout": "count_r[0]",
+      "pin": true,
+      "reference": "COUNT_R[0]"
+    },
+    {
+      "heuristic": false,
+      "layout": "count_r[1]",
+      "pin": true,
+      "reference": "COUNT_R[1]"
+    },
+    {
+      "heuristic": false,
+      "layout": "count_r[2]",
+      "pin": true,
+      "reference": "COUNT_R[2]"
+    },
+    {
+      "heuristic": false,
+      "layout": "count_r[3]",
+      "pin": true,
+      "reference": "COUNT_R[3]"
+    },
+    {
+      "heuristic": false,
+      "layout": "count_r[4]",
+      "pin": true,
+      "reference": "COUNT_R[4]"
+    },
+    {
+      "heuristic": false,
+      "layout": "count_r[5]",
+      "pin": true,
+      "reference": "COUNT_R[5]"
+    },
+    {
+      "heuristic": false,
+      "layout": "count_r[6]",
+      "pin": true,
+      "reference": "COUNT_R[6]"
+    },
+    {
+      "heuristic": false,
+      "layout": "count_r[7]",
+      "pin": true,
+      "reference": "COUNT_R[7]"
+    },
+    {
+      "heuristic": false,
+      "layout": "D",
+      "pin": true,
+      "reference": "D"
+    },
+    {
+      "heuristic": false,
+      "layout": "D",
+      "pin": true,
+      "reference": "D"
+    },
+    {
+      "heuristic": false,
+      "layout": "D",
+      "pin": true,
+      "reference": "D"
+    },
+    {
+      "heuristic": false,
+      "layout": "Q",
+      "pin": true,
+      "reference": "Q"
+    },
+    {
+      "heuristic": false,
+      "layout": "RESET_B",
+      "pin": true,
+      "reference": "RESET_B"
+    },
+    {
+      "heuristic": false,
+      "layout": "rst_n",
+      "pin": true,
+      "reference": "RST_N"
+    },
+    {
+      "heuristic": false,
+      "layout": "X",
+      "pin": true,
+      "reference": "X"
+    },
+    {
+      "heuristic": false,
+      "layout": "X",
+      "pin": true,
+      "reference": "X"
+    },
+    {
+      "heuristic": false,
+      "layout": "X",
+      "pin": true,
+      "reference": "X"
+    },
+    {
+      "heuristic": false,
+      "layout": "Y",
+      "pin": true,
+      "reference": "Y"
+    },
+    {
+      "heuristic": false,
+      "layout": "Y",
+      "pin": true,
+      "reference": "Y"
+    },
+    {
+      "heuristic": false,
+      "layout": "Y",
+      "pin": true,
+      "reference": "Y"
+    },
+    {
+      "heuristic": false,
+      "layout": "Y",
+      "pin": true,
+      "reference": "Y"
+    },
+    {
+      "heuristic": false,
+      "layout": "Y",
+      "pin": true,
+      "reference": "Y"
+    },
+    {
+      "heuristic": false,
+      "layout": "Y",
+      "pin": true,
+      "reference": "Y"
+    },
+    {
+      "heuristic": false,
+      "layout": "Y",
+      "pin": true,
+      "reference": "Y"
+    },
+    {
+      "heuristic": false,
+      "layout": "_00_",
+      "pin": true,
+      "reference": "_00_"
+    },
+    {
+      "heuristic": false,
+      "layout": "_01_",
+      "pin": true,
+      "reference": "_01_"
+    },
+    {
+      "heuristic": false,
+      "layout": "_02_",
+      "pin": true,
+      "reference": "_02_"
+    },
+    {
+      "heuristic": false,
+      "layout": "_03_",
+      "pin": true,
+      "reference": "_03_"
+    },
+    {
+      "heuristic": false,
+      "layout": "_04_",
+      "pin": true,
+      "reference": "_04_"
+    },
+    {
+      "heuristic": false,
+      "layout": "_05_",
+      "pin": true,
+      "reference": "_05_"
+    },
+    {
+      "heuristic": false,
+      "layout": "_06_[0]",
+      "pin": true,
+      "reference": "_06_[0]"
+    },
+    {
+      "heuristic": false,
+      "layout": "_07_[1]",
+      "pin": true,
+      "reference": "_07_[1]"
+    },
+    {
+      "heuristic": false,
+      "layout": "_07_[2]",
+      "pin": true,
+      "reference": "_07_[2]"
+    },
+    {
+      "heuristic": false,
+      "layout": "_07_[3]",
+      "pin": true,
+      "reference": "_07_[3]"
+    },
+    {
+      "heuristic": false,
+      "layout": "_07_[4]",
+      "pin": true,
+      "reference": "_07_[4]"
+    },
+    {
+      "heuristic": false,
+      "layout": "_07_[5]",
+      "pin": true,
+      "reference": "_07_[5]"
+    },
+    {
+      "heuristic": false,
+      "layout": "_07_[6]",
+      "pin": true,
+      "reference": "_07_[6]"
+    },
+    {
+      "heuristic": false,
+      "layout": "_07_[7]",
+      "pin": true,
+      "reference": "_07_[7]"
+    }
+  ],
+  "options": {
+    "anchor_top_level_pins": null,
+    "combine_devices": false,
+    "combine_devices_max_attempts": 5,
+    "combine_devices_per_circuit": null,
+    "compare_mos_flavour": false,
+    "compare_parameters": null,
+    "finfet_bulk": null,
+    "flatten_layout": false,
+    "flatten_reference": false,
+    "ignore_mos_bulk": false,
+    "netgen_setup": null,
+    "parameter_tolerance": null,
+    "power_connectivity": {
+      "expected_nets": {
+        "VGND": "VSS",
+        "VNB": "VSS",
+        "VPB": "VDD",
+        "VPWR": "VDD"
+      }
+    },
+    "strict_top_level_pin_count": false,
+    "supply_nets": [
+      "GND",
+      "VCC",
+      "VDD",
+      "VGND",
+      "VPWR",
+      "VSS"
+    ]
+  },
+  "parameter_tolerance": null,
+  "power_connectivity": {
+    "excluded_pins": [],
+    "expected_nets": {
+      "VGND": "VSS",
+      "VNB": "VSS",
+      "VPB": "VDD",
+      "VPWR": "VDD"
+    },
+    "finding_count": 0,
+    "findings": [],
+    "instance_count": 211,
+    "power_pins": [
+      "VGND",
+      "VPB",
+      "VPWR"
+    ],
+    "power_pins_derivation": {
+      "corroborated": true,
+      "master_count": 11,
+      "masters": [
+        "SKY130_FD_SC_HD__A31OI_1",
+        "SKY130_FD_SC_HD__AND4_1",
+        "SKY130_FD_SC_HD__BUF_4",
+        "SKY130_FD_SC_HD__DFRTP_1",
+        "SKY130_FD_SC_HD__INV_1",
+        "SKY130_FD_SC_HD__NAND2_1",
+        "SKY130_FD_SC_HD__NAND3_1",
+        "SKY130_FD_SC_HD__NAND4_1",
+        "SKY130_FD_SC_HD__NOR2_1",
+        "SKY130_FD_SC_HD__XNOR2_1",
+        "SKY130_FD_SC_HD__XOR2_1"
+      ],
+      "reason": null,
+      "rule": "declared-by-every-instantiated-master"
+    },
+    "reason": null,
+    "status": "match",
+    "unchecked_expected_pins": [
+      "VNB"
+    ]
+  },
+  "provenance": {
+    "deck": {
+      "content_hash": "sha256:36027b82e3b16075e72b8e21775cde47ba7d08b7636efa4b73e9c34732a28efd",
+      "name": "sky130",
+      "released": true
+    },
+    "input": {
+      "content_hash": "sha256:abbf4d806eaa629b6461935ee48496cd8305a990024bd5962345f979657b92b1",
+      "role": "layout"
+    },
+    "klayout_version": "0.30.13",
+    "klayout_version_mismatch": true,
+    "klt_git_commit": "046ba74652fc096bd97071fc3237f7159dd40183",
+    "klt_reinstall_spec": "klayout-tools==0.9.2",
+    "klt_version": "0.9.2",
+    "pdk": {
+      "ambiguous_sources": [
+        "search root: ~/.volare"
+      ],
+      "name": "sky130A",
+      "source": "PDK_ROOT environment variable",
+      "version": "open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7"
+    },
+    "pin_order_sources": [
+      {
+        "cells": 437,
+        "library": "sky130_fd_sc_hd",
+        "path": "$PDK_ROOT/ciel/sky130/versions/f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7/sky130A/libs.ref/sky130_fd_sc_hd/spice/sky130_fd_sc_hd.spice"
+      }
+    ]
+  },
+  "reference": {
+    "path": "flow/build/smoke/pnr/smoke.v",
+    "scope": "repo"
+  },
+  "reference_conversion": {
+    "form": "gate-level-verilog",
+    "library": "sky130_fd_sc_hd",
+    "pdk": "sky130A",
+    "pdk_root": null,
+    "pin_order_files": null
+  },
+  "reference_top": "SMOKE",
+  "schema_version": 3,
+  "status": "match",
+  "top": "smoke"
+}

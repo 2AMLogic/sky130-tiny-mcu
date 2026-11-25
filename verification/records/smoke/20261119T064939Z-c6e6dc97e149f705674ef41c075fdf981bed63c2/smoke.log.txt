@@ -1,0 +1,26 @@
+make[1]: Entering directory '/home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/verification'
+rm -f /home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/verification/sim_build/smoke/results.xml
+"make" -f /home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/verification/cocotb.mk /home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/verification/sim_build/smoke/results.xml
+make[2]: Entering directory '/home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/verification'
+/home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/.venv/lib/python3.12/site-packages/cocotb_tools/makefiles/simulators/Makefile.icarus:66: Using MODULE is deprecated, please use COCOTB_TEST_MODULES instead.
+rm -f /home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/verification/sim_build/smoke/results.xml
+COCOTB_TEST_MODULES=test_smoke COCOTB_TESTCASE= COCOTB_TEST_FILTER= COCOTB_TOPLEVEL=smoke TOPLEVEL_LANG=verilog \
+         /home/ubuntu/.local/bin/vvp -M /home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/.venv/lib/python3.12/site-packages/cocotb/libs -m libcocotbvpi_icarus   /home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/verification/sim_build/smoke/sim.vvp   
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:93   in _embed_init_python              Using Python 3.12.4 interpreter at /home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/.venv/bin/python3
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Icarus Verilog version 13.0 (stable)
+     0.00ns INFO     cocotb                             Seeding Python random module with 1795070979
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from /home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/.venv/lib/python3.12/site-packages/cocotb
+     0.00ns INFO     cocotb.regression                  pytest not found, install it to enable better AssertionError messages
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_smoke.counter_counts (1/1)
+    70.00ns INFO     cocotb.regression                  test_smoke.counter_counts passed
+    70.00ns INFO     cocotb.regression                  **************************************************************************************
+                                                        ** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        **************************************************************************************
+                                                        ** test_smoke.counter_counts      PASS          70.00           0.00      98855.65  **
+                                                        **************************************************************************************
+                                                        ** TESTS=1 PASS=1 FAIL=0 SKIP=0                 70.00           0.00      49594.81  **
+                                                        **************************************************************************************
+make[2]: Leaving directory '/home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/verification'
+make[1]: Leaving directory '/home/ubuntu/GitHub/sky130-tiny-mcu/.loom/worktrees/issue-7/verification'
