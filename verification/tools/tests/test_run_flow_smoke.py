@@ -28,6 +28,29 @@ from run_flow_smoke import (  # noqa: E402
 )
 
 
+class PdkVariantPinTests(unittest.TestCase):
+    """PDK_VARIANT comes from scripts/setup-env.sh, not a second literal (#47)."""
+
+    def test_variant_is_read_from_the_pin_source(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "setup-env.sh"
+            f.write_text('PIN_PDK_FAMILY="sky130"\nPIN_PDK_VARIANT="sky130B"\n')
+            self.assertEqual(run_flow_smoke.pin_pdk_variant(f), "sky130B")
+
+    def test_missing_pin_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "setup-env.sh"
+            f.write_text("PIN_PDK_FAMILY=sky130\n")
+            with self.assertRaises(RuntimeError):
+                run_flow_smoke.pin_pdk_variant(f)
+
+    def test_module_constant_matches_repo_pin(self):
+        line = next(l for l in (Path(run_flow_smoke.__file__).resolve().parents[2]
+                                / "scripts" / "setup-env.sh").read_text().splitlines()
+                    if l.startswith("PIN_PDK_VARIANT="))
+        self.assertEqual(line, f'PIN_PDK_VARIANT="{run_flow_smoke.PDK_VARIANT}"')
+
+
 def synth_env(**structural) -> dict:
     base = {"unexpected_latches": 0, "comb_loops": 0, "multi_driven": 0}
     base.update(structural)
