@@ -59,7 +59,7 @@ Yosys and OpenROAD. Two more check modes cover them:
 | Command | What it verifies |
 | --- | --- |
 | `scripts/setup-env.sh --check` | the simulation pins only (cocotb, iverilog) — exactly what hosted CI runs on runners with no PDK/klt/Yosys/OpenROAD |
-| `scripts/setup-env.sh --check-flow` | the simulation pins **plus** the PDK revision, klt version, the klayout engine the resolved klt loads (and that it is the engine klt itself was tested against — `klt version --format json`), the same engine pin restated in `layout/toolchain.json`, every `klt_required_commands` entry in `klt --help`, Yosys and OpenROAD; fails, never skips, on any mismatch or absence |
+| `scripts/setup-env.sh --check-flow` | the simulation pins **plus** the PDK revision, klt version, the klayout engine the resolved klt loads (and that it is the engine klt itself was tested against — `klt version --format json`), the same engine pin restated in `layout/toolchain.json`, that the engine pin meets the declared floor, every `klt_required_commands` entry in `klt --help`, Yosys and OpenROAD; fails, never skips, on any mismatch or absence |
 | `scripts/setup-env.sh --fetch-pdk` | fetches sky130A at the pinned open_pdks revision into `${PDK_ROOT:-~/.ciel}` via ciel (through `uvx`), then runs `--check-flow` |
 
 ```
