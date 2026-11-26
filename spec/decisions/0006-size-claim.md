@@ -36,30 +36,48 @@ feasibility requires a routed measurement.
 
 ## Decision
 
-1. **What is measured: the post-route core area** of the full MCU — all
-   standard cells plus the RAM array and clock ring inside the core
-   boundary, pad-less (this block has no pad ring in scope), taken from the
-   **DRC-clean, LVS-matched routed GDS** via the layout bounding box, and
-   cross-checked against the OpenROAD final area report. Both numbers are
-   recorded; the GDS bbox is the claimed one.
+1. **AREA grades the routed placement core of the full MCU.** Use the
+   top-level `core_area_um2` in the final `klt place-and-route` report.
+   It measures the core floorplan, including whitespace, for the design
+   containing SERV, RAM, clock ring, boot logic and peripherals. Require
+   a clean DRC and matching LVS for the same routed layout. Report the
+   padless die footprint (`die_area_um2`) separately. Also record the
+   bounding box of the routed GDS top cell as the extent of drawn geometry.
+   Pins and routing can extend beyond the placement core.
 2. **The comparison set** a size claim must name:
    - **SERV minimal config synthesized in *this* repo's flow on sky130** —
      the apples-to-apples anchor, from the same pinned tree, synthesized
-     and routed by the same commands, published beside the MCU number.
+     and routed by the same commands. Extract `core_area_um2` by the same
+     rule in item 1 and publish it beside the MCU core area.
      (SERV's own 2.1kGE figure is quoted only as *their* number, with its
      "excluding register file" caveat attached.)
    - **Commercial 8-pin MCUs, published-die-area only** (e.g. the
-     r/nicechips parts in the README), each cited to its datasheet — never
-     estimated, never compared against a different measurement method
-     without saying so.
-3. **Reproducibility: the command path.** Every published area figure cites
-   (a) the flow commands from a clean checkout — synthesis,
-   place-and-route, and the `klt` DRC/LVS steps as driven from `flow/`
-   (the exact request/command path is named by the flow issue that builds
-   it), (b) the
-   report file paths in `verification/records/` and `layout/`, and (c) the
-   tool/PDK pins in force. A figure without its command path is not a
-   result; recorded results are append-only evidence.
+     r/nicechips parts in the README), each cited to its datasheet. Use
+     the MCU's separate die figure for this comparison and disclose the
+     padless boundary and the commercial part's pad inclusion where known.
+3. **Extract and grade the area.** From the repo root, the following
+   commands use the [committed smoke report](../../verification/records/flow-smoke/20261122T213813Z-7fb324c8f0fe6f3159a1d3e87b6e3875cf537620/place-and-route.json)
+   as a worked example. For the MCU or SERV, set `report` to that build's
+   archived final report. The first command on the report prints both
+   footprints in µm². The second exits successfully only when the routed
+   core meets the selected limit. Use 100000 µm² for target, 150000 for
+   fallback and 50000 for stretch (1 mm² = 1,000,000 µm²).
+
+   ```sh
+   report=verification/records/flow-smoke/20261122T213813Z-7fb324c8f0fe6f3159a1d3e87b6e3875cf537620/place-and-route.json
+   jq '{core_area_um2, die_area_um2}' "$report"
+   jq -e --argjson limit_um2 100000 '
+     select(.status == "ok" and .stage_reached == "route")
+     | .core_area_um2 | numbers | . > 0 and . <= $limit_um2
+   ' "$report"
+   ```
+
+   The smoke counter reports 1506.44 µm² of core and 3600 µm² of die.
+   Its clock pin at x = 0.4 µm lies outside the [requested core](../../flow/smoke/par.json),
+   whose left edge is at 10 µm. These figures demonstrate the extraction
+   method. For a design claim, archive the build configuration, flow
+   requests and commands, tool/PDK pins, routed report, GDS and signoff
+   report paths so the measurement can be reproduced from a clean checkout.
 4. **AREA row targets** (unchanged from the draft, now method-bound):
    target ≤ **0.10 mm²** post-route core area for the full MCU; fallback
    ≤ **0.15 mm²** for the full target MCU. The ≤ **0.05 mm²** stretch
@@ -93,7 +111,7 @@ feasibility requires a routed measurement.
 - The first synthesis/P&R runs exist to *populate* this method, not to
   tune toward the row; a missed target is recorded and the row is changed
   by a new decision record — never relaxed to make a result pass.
-- Measuring area is out of scope for this issue (the flow does not exist
-  yet); the README Status block stays `not yet measured` / `spec`.
+- The first MCU measurement requires its own routed build and signoff.
+  The README Status block stays `not yet measured` / `spec` until then.
 - The ngspice ROSC measurement of record 0005 and any timing claim follow
   the same append-only command-path rule.

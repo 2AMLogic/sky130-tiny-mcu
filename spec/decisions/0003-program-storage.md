@@ -23,6 +23,7 @@ protocol, the boot mechanism, or the mask-ROM cost. Facts read
 | sky130 ROM macro | none shipped | `libs.ref/` listing, PDK commit `c6d73a35…` (record 0002) |
 | Synthesized ROM cost | A 256 B ROM represents 2,048 constants. Its area depends on the image and logic minimization. A numerical area comparison requires synthesis with a named image. | Record 0002 gives measured cell areas for writable storage only. |
 | Reference flash | Winbond W25Q16JWSNJQ, standard SPI, 1.65–1.95 V. `03h` takes a 24-bit address and streams bytes MSB first. With CS# high the outputs are high impedance after at most 7 ns. | [Winbond W25Q16JW Rev H](https://www.winbond.com/resource-files/W25Q16JW%20RevH%2005262026%20Plus.pdf), Pin Descriptions, Read Data, Power-Up Timing, AC Characteristics and Ordering Information, read 2026-11-25 |
+| Flash busy across MCU reset | A powered flash accepts Read Status Register-1 (`05h`) during an erase or program. It ignores Read Data (`03h`) while BUSY is set. A 4 KiB sector erase can take 400 ms. | [Winbond W25Q16JW Rev H](https://www.winbond.com/resource-files/W25Q16JW%20RevH%2005262026%20Plus.pdf), Status Register-1 bit S0, Read Status Register, Read Data and AC Electrical Characteristics, read 2026-11-26 |
 | Board interface | MCU I/O and flash share a nominal 1.8 V rail. Provide a CS# pull-up to that rail. Keep unused IO2/IO3 pulled high for single-SPI operation. | Flash thresholds and timing from the same datasheet. Integration must check pad VOH/VOL, VIH/VIL, load and delays. The 1.60 V internal STA corner is outside the flash supply range. |
 | Precedent for a tiny boot FSM | the sibling SoC uses a 4 KB boot ROM whose firmware copies/receives code into SRAM (`spec/soc.md` § Memory map, read 2026-11-19); this block has no room for a firmware ROM, so the copy is hardware | 2AMLogic/sky130-riscv-soc @ `e1135913b57ebf0cd57a7882772545fedb7291d0` |
 
@@ -32,9 +33,13 @@ GPIO use (record 0005).
 
 ## Decision
 
-1. **SPI copy.** On the strap-sample edge in record 0005, a high RX selects
-   SPI. With the core held in reset, the loader asserts CS# and issues
-   `03h`, address `0x000000`, mode 0, with no dummy cycles. It writes the
+1. **SPI copy.** A high RX at strap sample (0005) selects SPI mode 0.
+   On every SPI boot, assert CS#, send `05h` and clock complete status
+   bytes from CIPO until bit 0 (BUSY) reads zero. Keep SERV in reset
+   and inhibit RAM writes and fetches for the entire wait, however long
+   the flash stays busy. Raise CS# for at least 10 ns (read deselect time),
+   then assert it for a new `03h` transaction at address `0x000000`.
+   Read with no dummy cycles. The loader writes the
    112 returned bytes in ascending order to `0x00–0x6F`. A raw image is
    little-endian RV32 code at offset zero, followed by its link-defined
    contents and zero padding to 112 bytes. There is no header. At the
@@ -66,10 +71,9 @@ GPIO use (record 0005).
    area and fixes one program per mask revision. The open PDK inventory
    in 0002 contains no ROM macro. Retain the reprogrammable external
    store and disclose the extra component in board comparisons.
-5. **Blank-flash behavior**: the FSM always completes the copy and releases
-   the core; a blank (all-`FF`) image leaves the core executing `FF`
-   words. The spec does not promise more; the RTL issue may refine (e.g.
-   signature check jumping to the UART loader) by record, not by silence.
+5. **Blank flash.** Once a ready flash supplies all 112 bytes, the loader
+   releases the core even if the image is all `FF`. The raw image format
+   has no integrity check.
 
 ## Alternatives considered
 
@@ -93,9 +97,15 @@ GPIO use (record 0005).
 
 - The boot FSM, the strap mux and the pin mux (record 0005) are one
   coherent RTL unit; their combined area is measured in the flow reports.
-- For a 112 B image, the SPI transfer takes 32 command/address clocks and
-  896 data clocks, plus CS setup/hold. Startup also includes board reset,
-  the 256-cycle count and handoff.
-- The cocotb boot testbench exercises: flash boot (against a SPI flash
-  model), UART boot (auto-baud + raw load), and the pin release to GPIO
-  after each mode.
+- SPI boot takes 8 clocks for `05h` and 8 per status byte, then 32 for
+  the read command/address and 896 for the payload. Startup also includes
+  board reset, the 256-cycle strap delay, CS timing and handoff.
+- The cocotb boot test must exercise both loaders and GPIO handoff. For
+  warm reset, preload a known 112-byte boot image, start a sector erase
+  outside the boot image and pulse MCU reset with the flash still powered.
+  Model `03h` as ignored while busy and keep BUSY set past strap sample
+  for several status bytes. Check that the loader polls without issuing
+  `03h`, writing RAM or releasing SERV. After BUSY clears, check the new
+   read transaction, compare all 112 RAM writes with the image and assert
+   that SERV stays in reset through the last write at `0x6F`. Observe
+   the first fetch at zero on a later edge and the firmware's expected result.
