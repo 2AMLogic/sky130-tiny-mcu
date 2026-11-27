@@ -35,7 +35,7 @@ Design stage: spec
 **Just opened, specification phase.** Nothing is designed yet, nothing has been
 taped out, and nothing has been measured.
 
-Not being built here: on-chip flash (the open sky130 PDK has none; code is loaded from an external SPI flash or held in a mask ROM), an ADC, and any second peripheral of a kind already present. "Smallest" is not claimed until an area is measured from a clean layout. No RTL, layout or silicon exists yet.
+Not being built here: on-chip flash (the open sky130 PDK has none; the program is copied from an external SPI flash at boot, decision record [0003](spec/decisions/0003-program-storage.md)), an ADC, and any second peripheral of a kind already present. "Smallest" is not claimed until an area is measured from a clean layout. No RTL, layout or silicon exists yet.
 
 ## Built agent-native
 
@@ -48,20 +48,22 @@ result. Where the agents hit friction with the open-source tooling — most ofte
 filed as a public issue against the tool itself, so the fix benefits everyone
 using sky130, not just this repo.
 
-## Target specification (DRAFT — engineering to ratify, see issue #1)
+## Target specification (proposed — see [spec/target-spec.md](spec/target-spec.md))
 
-| Parameter | Target | Stretch |
-|---|---|---|
-| Instruction set | RV32E base integer, bit-serial datapath | RV32I |
-| Core supply | 1.8 V |  |
-| Clock | ≥ 16 MHz system clock | ≥ 32 MHz |
-| RAM | 256 bytes | 1 KB |
-| Program storage | boot from external SPI flash | optional mask ROM |
-| GPIO | 6 pins, each input or output |  |
-| Peripherals | one timer, one UART |  |
-| Compliance | passes the RISC-V architectural tests for the implemented base |  |
-| Pin count | 8 |  |
-| AREA | ≤ 0.10 mm² core, RAM included | ≤ 0.05 mm² |
+| # | Parameter | Target | Fallback | Stretch | Verification | Record |
+|---|---|---|---|---|---|---|
+| 1 | Core | SERV 1.4.0, bit-serial (`W=1`), by pinned reference `f200eb2ed7b69ac1c6b8eddd47654522aeee5ce8`, unmodified | none — a different core supersedes record 0001 | QERV `W=4` datapath | cocotb compliance run (row 10) on the RTL; synthesis in this repo's flow | [0001](spec/decisions/0001-core.md) |
+| 2 | Instruction set | RV32IZifencei + SERV's CSR subset (`WITH_CSR=1`, `COMPRESSED=0`, `MDU=0`) | `WITH_CSR=0`: RV32IZifencei, no traps — compliance reduces to `I`+`Zifencei` | C (`COMPRESSED=1`); M (external MDU) — each with an area measurement | compliance run (row 10) + cocotb CSR tests against the `serv_csr.v` subset | [0001](spec/decisions/0001-core.md), [0007](spec/decisions/0007-compliance.md) |
+| 3 | Core and I/O supply | 1.8 V nominal, shared with reference flash | — | — | LVS supply connectivity, internal STA corners in 0006, board I/O margins within flash ratings in 0003 | [0001](spec/decisions/0001-core.md) |
+| 4 | Clock | internal ring oscillator, ≥16 MHz at `tt_025C_1v80` | external clock on gpio0 after boot | 32 MHz nominal | extracted ring startup and period range across PVT, post-route STA at each corner’s shortest supported period with uncertainty | [0005](spec/decisions/0005-pins.md) |
+| 5 | RAM | 256 B single-port flop array, 144 B RF and 112 B firmware | 256 B latch implementation, same map | 512 B latch build within 0.10 mm² | RF/bus arbitration, boundary and alias tests, latch timing where applicable, measured area | [0002](spec/decisions/0002-memory.md) |
+| 6 | Program storage | external 1.8 V W25Q16JW, poll BUSY with `05h` before `03h` copies 112 B to address 0 | strap RX low, idle high, train with 0x55, load 112 UART bytes | — (mask ROM costed in 0003) | boot both paths, reset the MCU during a sector erase outside the boot image, verify all 112 writes before release, first fetch at 0 and firmware result | [0003](spec/decisions/0003-program-storage.md) |
+| 7 | GPIO | 4 muxed bits with flash isolated. With flash attached and CS# high, 3 independent GPIO, or 2 with UART TX | external clock consumes gpio0 in each mode | — | flash DO and MCU OE contention check through boot, GPIO handoff and flash reprogramming | [0005](spec/decisions/0005-pins.md) |
+| 8 | Peripherals | one 32-bit compare timer and one polled 8N1 TX/RX UART with RX-level auto-baud | — | — | register and IRQ tests, qualify framing, polling and drift per baud rate and retraining interval | [0004](spec/decisions/0004-peripherals.md) |
+| 9 | Interrupts | one timer-IRQ line into the core (`i_timer_irq`) + machine traps; UART/GPIO polled | none (`WITH_CSR=0`) | — | cocotb IRQ test; compliance `privilege` run | [0001](spec/decisions/0001-core.md), [0004](spec/decisions/0004-peripherals.md) |
+| 10 | Compliance | riscv-arch-test 3.10.0 @ `9bceaf5c02fa1131625bc6228b834e9e884c5801`, riscof/SAIL on simulation memory for I, Zifencei and applicable privilege tests, plus CSR tests | I + Zifencei for the CSR-disabled variant | ACT framework by a new record | archive ISA signatures and exclusions, separately verify both boots and execution on the 112 B firmware map | [0007](spec/decisions/0007-compliance.md) |
+| 11 | Pin count & mux | 8 pins including VDD, GND and board-driven reset_n. UART TX shares flash COPI, RX selects boot mode | — | — | test asserted reset from unknown state, 256 ROSC edges to strap sample, loader/core release order and pin ownership | [0005](spec/decisions/0005-pins.md) |
+| 12 | AREA | ≤0.10 mm² routed placement core of the full MCU including 256 B RAM | ≤0.15 mm² | ≤0.05 mm² with the full 256 B latch array and 144 B RF | grade `core_area_um2` from final P&R with clean DRC and matching LVS, report `die_area_um2` separately (0006) | [0006](spec/decisions/0006-size-claim.md) |
 
 ## Repo layout
 
