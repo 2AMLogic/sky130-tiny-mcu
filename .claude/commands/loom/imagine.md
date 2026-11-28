@@ -300,7 +300,7 @@ Target: Core scaffolding, build setup, and initial feature implementation
 
 ## Getting Started
 
-*Documentation coming soon - this project uses [Loom](https://github.com/rjwalters/loom) for AI-powered development.*
+*Documentation coming soon - this project uses [Loom](https://github.com/2AMLogic/loom) for AI-powered development.*
 
 ## Development
 
@@ -393,6 +393,8 @@ Entries are grouped by date, newest first. Each entry references the merged PR o
 <!-- Maintained automatically by the Guide triage agent. Manual edits are fine but may be overwritten. -->
 
 ## Archives
+
+## Entries
 
 ### {{TODAY_DATE}}
 

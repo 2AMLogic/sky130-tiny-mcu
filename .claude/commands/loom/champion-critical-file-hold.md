@@ -98,7 +98,8 @@ matching row wins:
 | State | Action on FAIL |
 |---|---|
 | `released`, recorded head == current head | nothing at all: no label, no comment |
-| either, label present (a human put it back) | hold stands, silently — except that a changed standing-authorization digest is recorded once (#12933) |
+| either, label present AND the latest marker records the current head (a repeat tick) | hold stands, silently — except that a changed standing-authorization digest is recorded once (#12933) |
+| either, label present but the latest marker records an older head, or none (#14833) | re-hold at the current head: a fresh hold notice records `champion:hold-state head=<current>`; the label stays. No equivalence carry — the label's presence is the operator's standing decision, and the marker must name the head `--release-hold` reads |
 | `held`, label absent, recorded head == current head | **respect the release**: acknowledge once, do **not** re-add the label |
 | `none` | fresh hold: notice + `loom:blocked` |
 | either, head moved but the PR's own change provably did not (#9416), or only the operator's `release-scope:` paths changed (#13114) | **respect, re-recorded at the new head** with the equivalence kind |
@@ -195,12 +196,18 @@ if [ "$CRITICAL_FILES_RESULT" = "FAIL" ]; then
   CF_EQUIV_KIND=""
   if [ "$CF_STATE" = released ] && [ "$STATE_HEAD" = "$HEAD_SHA" ]; then
     CF_ACTION=none          # released at this head, already acknowledged
-  elif [ "$HOLD_LABEL_NOW" = true ] && [ "$CF_STATE" != none ]; then
-    CF_ACTION=stands        # label back on: a human re-asserted the hold
+  elif [ "$HOLD_LABEL_NOW" = true ] && [ "$CF_STATE" != none ] && [ -n "$STATE_HEAD" ] && [ "$STATE_HEAD" = "$HEAD_SHA" ]; then
+    CF_ACTION=stands        # label on AND the latest marker is at this head: a repeat tick
   elif [ "$CF_STATE" = held ] && [ -n "$STATE_HEAD" ] && [ "$STATE_HEAD" = "$HEAD_SHA" ]; then
     CF_ACTION=respect
   elif [ "$CF_STATE" = none ]; then
     CF_ACTION=hold          # fresh episode
+  elif [ "$HOLD_LABEL_NOW" = true ]; then
+    CF_ACTION=hold          # label on but the marker is at an OLDER head (or legacy): this
+                            # FAIL re-holds the PR at a NEW head (#14833) — a fresh notice
+                            # records it, or `--release-hold` reads the stale head and refuses
+                            # a valid release. No equivalence carry: the label's presence is
+                            # the operator's standing decision (row order above).
   elif cf_change_unmoved; then
     CF_ACTION=respect       # head moved, the PR's own change did not (#9416)
   else

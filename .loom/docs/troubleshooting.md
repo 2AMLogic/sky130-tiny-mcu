@@ -172,7 +172,7 @@ git branch feature/issue-N origin/feature/issue-N && ./.loom/scripts/worktree.sh
 ```
 
 This arm has no shell implementation of its own — `lib/worktree-forge-pr-check.sh`
-is `contract`-category (see [`shell-language-policy.md`](https://github.com/rjwalters/loom/blob/main/.loom/docs/shell-language-policy.md)),
+is `contract`-category (see [`shell-language-policy.md`](https://github.com/2AMLogic/loom/blob/main/.loom/docs/shell-language-policy.md)),
 so the decision lives once, in `loom-daemon worktree-closed-pr-branch`. A
 daemon predating the subcommand degrades to the pre-#9083 reuse behavior
 rather than surfacing a clap usage error.
@@ -513,14 +513,22 @@ config hierarchy) and reclaims it afterwards — but only when the redirect is
 attributable to that one worktree, which means a `.cargo/config.toml` inside it
 (see the never-delete list and the limitation below):
 
-- `worktree.sh remove <N>` — bash side, via
-  `defaults/scripts/lib/cargo-target-dir.sh`.
-- `merge-pr.sh`'s post-merge worktree cleanup — same bash library. This is the
-  removal path most worktrees actually take, so it is where the leak was
-  largest.
-- `loom-daemon clean` and the daemon's periodic worktree reaper — Rust side,
-  via `loom-daemon/src/worktree_ops/cargo_target.rs` (both `issue-<N>` and
-  `pr-<N>` worktrees).
+- `worktree.sh remove <N>` — via `loom-daemon worktree-remove`.
+- `merge-pr.sh`'s post-merge worktree cleanup — via `loom-daemon merge-pr
+  post-merge-cleanup`. This is the removal path most worktrees actually take,
+  so it is where the leak was largest.
+- the daemon's merge-observation pass (#14904) — directly: when the
+  reconciliation tick observes a merge made on the forge side (GitHub's own
+  merge button, a queue-merged PR), it replays `merge-pr.sh`'s whole
+  post-merge worktree-cleanup block in-process, so those worktrees are
+  reclaimed without waiting for the periodic reaper.
+- `loom-daemon clean` and the daemon's periodic worktree reaper — directly.
+
+All of them run the same Rust reclaim in
+`loom-daemon/src/worktree_ops/cargo_target.rs` (both `issue-<N>` and `pr-<N>`
+worktrees); the parallel bash reclaim stack that once lived in
+`defaults/scripts/lib/cargo-target-dir.sh` was deleted (#15075) once every
+removal surface had migrated.
 
 Preview what a removal would reclaim, with sizes, without touching anything:
 
@@ -792,9 +800,12 @@ or `LOOM_PER_WORKTREE_TARGET_DIR=1` in the daemon's environment. Then:
   every rule in the scheme is stated once, in the daemon; the shell scripts hold
   only the call sites.
 - Every removal path reclaims it: `worktree.sh remove`, `merge-pr.sh`'s
-  post-merge cleanup, `loom-daemon clean`, and the daemon's periodic reaper (so a
-  worktree whose PR merged on another host is cleaned up here too). All four now
-  run the **same** Rust decision (`worktree_ops::cargo_target::plan_reclaim`):
+  post-merge cleanup, `loom-daemon clean`, the daemon's periodic reaper (so a
+  worktree whose PR merged on another host is cleaned up here too), and the
+  daemon's merge-observation pass (#14904), which replays the script's whole
+  post-merge worktree cleanup once it observes a forge-side merge. All five
+  now run the **same** Rust decision
+  (`worktree_ops::cargo_target::plan_reclaim`):
   `merge-pr.sh` removes worktrees with its own `git worktree remove --force`
   rather than through `worktree.sh remove`, so it could not inherit that reclaim
   by delegation and carried the last bash copy of the resolve/reclaim call
@@ -941,9 +952,15 @@ jq -r 'select(.ts > "2026-08-10T20:00:00") | "\(.ts) \(.mechanism) \(.reason) \(
 ```
 
 `mechanism` is one of `clean`, `clean --aggressive`, `worktree_reaper`,
-`terminal_destroy`, `loom-recover-orphans`, `merge-pr.sh`, `worktree.sh remove`,
-`agent-destroy.sh` — all eight of Loom's removal paths; `reason` is the exact
-decision that authorized it (e.g. `force_override_unreachable`, `pr_merged`).
+`loom-recover-orphans`, `merge-pr.sh`, `worktree.sh remove`,
+`agent-destroy.sh`, `merge_observation` — all eight of Loom's removal paths
+(`merge_observation`, #14904, is the daemon's merge-observation pass: the same
+post-merge cleanup `merge-pr.sh` runs, triggered from the reconciliation tick
+when a forge-side merge is observed — a removal by it is the daemon's, not the
+script's); `reason` is the exact decision that authorized it (e.g.
+`force_override_unreachable`, `pr_merged`; `agent-destroy.sh` writes
+`terminal_destroy` here, and ledger lines older than #13867 may carry it as a
+`mechanism`).
 **An absent entry is evidence too**: no Loom code path removed it, so look at
 host-level/manual action — a bare `rm -rf`, a hand-run `git worktree remove`, a
 `git worktree prune` against a directory that was moved, or another checkout of
@@ -1892,9 +1909,11 @@ carries `assessment_failed` / `assessment_errors` for automation.
 
 The above covers a stuck OPEN issue. A different, purely cosmetic case: a
 **closed** issue that still carries `loom:building` — `gh issue list --label
-loom:building` without `--state open` returns these as noise. `merge-pr.sh`
-strips the label from any issue its own merge closes (`Closes #N` / `Fixes
-#N` / `Resolves #N`), but issues closed by other means (manually, as a
+loom:building` without `--state open` returns these as noise. The daemon's
+merge-observation pass (since #14905; `merge-pr.sh` used to) strips the label
+from any issue a merge closes (`Closes #N` / `Fixes #N` / `Resolves #N`) —
+whoever made the merge, within one reconciliation tick, provided the host's
+`loom-daemon` is >= 0.20.29 — but issues closed by other means (manually, as a
 duplicate, or `--reason "not planned"`) are not covered automatically —
 run `./.loom/scripts/clean-stale-building-labels.sh [--repo OWNER/NAME]
 [--dry-run]` to sweep those (idempotent, safe to re-run).
@@ -2062,9 +2081,10 @@ The daemon automatically prunes them once they are older than the
 4. **Replay, don't pop.** To recover the work, apply the diff **inside the
    owning issue worktree** rather than `git stash pop`-ing it back into the
    primary clone — a pop in a shared stack can restore someone else's entry
-   (see "Never use bare `git stash` for ad-hoc WIP" in `builder.md`), and it
-   puts the contamination straight back where the backstop will quarantine it
-   again.
+   (see
+   [`builder-worktree.md` → "Replay quarantined edits"](https://github.com/2AMLogic/loom/blob/main/defaults/.claude/commands/loom/builder-worktree.md#replay-quarantined-edits)),
+   and it puts the contamination straight back where the backstop will
+   quarantine it again.
 
 **Empty entries**: an entry flagged `[EMPTY]` recorded nothing. These came from
 a race between the contamination snapshot and the stash push; the push is now
@@ -2315,7 +2335,7 @@ exec-latency artifacts rather than contention. The narrative and its consequence
 for gate niceness live in [`build-gate.md`](build-gate.md) (the #4044 / #4046
 falsification passage). ADR-0011 also records this as a macOS-specific defect that
 is invisible to Linux CI by construction — see
-[`docs/adr/0011-ci-runner-platform.md`](https://github.com/rjwalters/loom/blob/main/docs/adr/0011-ci-runner-platform.md)
+[`docs/adr/0011-ci-runner-platform.md`](https://github.com/2AMLogic/loom/blob/main/docs/adr/0011-ci-runner-platform.md)
 (upstream Loom repo — not shipped to consumer installs).
 
 > **Historical note on timeouts.** Contemporaneous incident writeups mention a
@@ -2353,7 +2373,7 @@ loom-daemon status --json  # machine-readable
 | `dead_pid` | (instant) | PID in the daemon sweep registry is no longer alive |
 | `error_spike` | 5 errors | Multiple errors in `.loom/logs/sweep-issue-N.log` |
 
-The pre-v0.10.0 indicators `missing_milestone:worktree_created` and `extended_work` were retired when the Python daemon brain (`daemon_v2/`) was removed — see [the migration guide § Per-CLI breaking changes](https://github.com/rjwalters/loom/blob/main/docs/migration/v0.10.0-shepherd-deprecation.md#per-cli-breaking-changes) (upstream Loom repo — not shipped to consumer installs) for the field-level diff. The shell-level `./.loom/scripts/daemon.sh` launcher was removed in #3432, and the Rust daemon does not write progress files, so milestone-based heuristics no longer apply.
+The pre-v0.10.0 indicators `missing_milestone:worktree_created` and `extended_work` were retired when the Python daemon brain (`daemon_v2/`) was removed — see [the migration guide § Per-CLI breaking changes](https://github.com/2AMLogic/loom/blob/main/docs/migration/v0.10.0-shepherd-deprecation.md#per-cli-breaking-changes) (upstream Loom repo — not shipped to consumer installs) for the field-level diff. The shell-level `./.loom/scripts/daemon.sh` launcher was removed in #3432, and the Rust daemon does not write progress files, so milestone-based heuristics no longer apply.
 
 ### A killed Task/Agent-tool subagent leaves no teardown signal for external resources it held
 
@@ -2601,7 +2621,7 @@ cd mcp-loom && npm install && npm run build
 grep -c dispatch_sweep dist/index.js   # should now be > 0
 ```
 
-`scripts/setup-mcp.sh` now auto-rebuilds when `dist/index.js` is missing **or** older than any file under `mcp-loom/src/` (#3803), so `./scripts/setup-mcp.sh` is the safe one-shot path. Rebuilding the bundle does **not** refresh an already-running session — an MCP client caches its tool list at connect time, so you must **restart the Claude Code session** (or respawn the `loom` MCP subprocess) for the new tools to appear. See [`mcp-loom/README.md`](https://github.com/rjwalters/loom/blob/main/mcp-loom/README.md#rebuilding-after-source-changes-reconnect-required) (upstream Loom repo — not shipped to consumer installs) for the full rebuild + reconnect procedure and a raw `tools/list` verification snippet.
+`scripts/setup-mcp.sh` now auto-rebuilds when `dist/index.js` is missing **or** older than any file under `mcp-loom/src/` (#3803), so `./scripts/setup-mcp.sh` is the safe one-shot path. Rebuilding the bundle does **not** refresh an already-running session — an MCP client caches its tool list at connect time, so you must **restart the Claude Code session** (or respawn the `loom` MCP subprocess) for the new tools to appear. See [`mcp-loom/README.md`](https://github.com/2AMLogic/loom/blob/main/mcp-loom/README.md#rebuilding-after-source-changes-reconnect-required) (upstream Loom repo — not shipped to consumer installs) for the full rebuild + reconnect procedure and a raw `tools/list` verification snippet.
 
 ### MCP tools hang with no response (~1800s), then abort
 
@@ -3073,6 +3093,22 @@ the primary. Because nothing is written to the primary checkout either way, the
 be run from anywhere (the main checkout or any linked worktree) at any time,
 including mid-sweep, with zero risk to the live checkout.
 
+**Staging mode skips Loom's user-scope provisioning steps too (#15518).** The
+two host-level steps a **real** non-staging run ends with — the #10238
+(re)provisioning of `~/.local/bin/loom` and of the `~/.claude/commands/loom` +
+`~/.claude/agents/loom-*.md` links from the source checkout, and the #12121
+strip of the retired `presence-beat.sh` wiring from `~/.claude/settings.json` —
+are both skipped under `--output`: a staged resync has no user-scope surface to
+refresh, and those paths serve every session on the host. Before #15518 a real
+`--output --source <checkout>` run still ran the first of them, so it
+re-installed `~/.local/bin/loom` from whatever checkout `--source` named while
+`--dry-run` (which skips the step) showed nothing. This guarantee covers only
+those Loom steps (the dispatcher, the skill/agent links and the Claude settings
+strip); it is not a promise that `$HOME` is byte-identical, because other tools
+the run invokes (e.g. `gh`, `rustup`) may still create their own state under it.
+A bare run (or `--allow-worktree`) still does both Loom steps;
+`LOOM_RESYNC_SKIP_USER_SCOPE=1` opts a bare run out of the first.
+
 **`<base>` is the HEAD of the checkout you invoked it from (#9550)** — not the
 primary checkout's — so a commit you make in the staging worktree fast-forwards
 onto the branch you were standing on. That matters because the documented place
@@ -3202,6 +3238,14 @@ git merge --ff-only origin/main                 # bring defaults/ current
 ./.loom/scripts/land-resync-commit.sh           # commit + land it (never rebases/bypass-pushes, #6646)
 ```
 
+**Exit codes (#14434):** `0` synced / in sync; `1` error (or a file failed to sync);
+`2` `--dry-run` found drift; `3` synced, but the local-divergence protection (#7864)
+**held back** one or more files that look like a local fix. On exit `3` everything
+else is applied and `.loom/install-metadata.json` records the withheld paths under
+`held_back` (the version stamp still advances; the daemon's install classifier treats
+a non-empty `held_back` as a resync owed, never as current). Review each file, then
+re-run with `--force`; the next run that holds nothing back clears `held_back`.
+
 The last step is what actually commits and pushes the refreshed surfaces onto
 the primary clone's default branch — see "Landing a resync commit on the
 primary clone (#6646)" below for exactly what it will and will not do on its
@@ -3217,22 +3261,29 @@ reinstall keeps the copies current too.
 
 **Where the files come from: a `defaults/` source tree, else the daemon's
 embedded payload (#6202, #8961).** `resync-installed.sh` resolves its source in
-priority order: (1) this checkout IS the Loom source repo (`defaults/hooks` or
-`defaults/scripts` present), (2) the gitignored `.loom/loom-source-path`
-sidecar (written only by a local `install.sh` / `install-loom.sh` run) points
-at a local clone of it, or (3) a legacy `install-metadata.json` `"loom_source"`
-field (dead for any post-#5624 install). **None of these exist on a checkout
-that never ran the Loom installer locally** (a fresh clone, a re-clone, a CI
-checkout). There the script hands off to `loom-daemon resync-payload`, which
-resyncs from the payload embedded in the installed daemon: same pins and
-symlink rules, exit `2` on `--dry-run` drift, never a downgrade, and only a
-verified official release build applies. It skips the script-only steps and
-names them in its output. A refusal prints its reason and exits `1`. Only with
-no source tree AND no `loom-daemon` that has that subcommand does the script
-fail with `Could not locate a defaults/ source tree to sync from`
+priority order: (0) an explicit `--source <dir>` flag (#14677) — first and
+EXCLUSIVE when given (an unusable `<dir>` is a hard error naming the path, no
+fallthrough), and the form to use from a managed worktree in a consumer repo,
+where the gitignored sidecar below lives only in the primary checkout and
+cannot be written from the worktree, (1) this checkout IS the Loom source repo
+(`defaults/hooks` or `defaults/scripts` present), (2) the gitignored
+`.loom/loom-source-path` sidecar (written only by a local `install.sh` /
+`install-loom.sh` run) points at a local clone of it, or (3) a legacy
+`install-metadata.json` `"loom_source"` field (dead for any post-#5624
+install). **None of these exist on a checkout that never ran the Loom
+installer locally** (a fresh clone, a re-clone, a CI checkout). There the
+script hands off to `loom-daemon resync-payload`, which resyncs from the
+payload embedded in the installed daemon: same pins and symlink rules, exit
+`2` on `--dry-run` drift, never a downgrade, and only a verified official
+release build applies. It skips the script-only steps and names them in its
+output. A refusal prints its reason and exits `1`. Only with no source tree
+AND no `loom-daemon` that has that subcommand does the script fail with
+`Could not locate a defaults/ source tree to sync from`
 (`check-main-freshness.sh` says which path is next). Fix for that case: install
-or update `loom-daemon`, or clone <https://github.com/rjwalters/loom> and run
-`echo /path/to/local/loom-clone > .loom/loom-source-path`.
+or update `loom-daemon`, or clone <https://github.com/2AMLogic/loom> and run
+`echo /path/to/local/loom-clone > .loom/loom-source-path` — or name the clone
+for one invocation only with `--source /path/to/local/loom-clone`, which never
+reads or writes the sidecar and combines with `--output` staging (#14677).
 
 **`.loom/loom-source-path` is a DURABLE pointer — never point it into scratch
 space (#6780).** Every future `resync-installed.sh` / `check-main-freshness.sh`
@@ -3252,6 +3303,15 @@ resolved path to actually contain a populated `defaults/hooks` or
 `defaults/scripts` — a sidecar pointing at a directory that still exists but
 is stale/empty (rather than fully vanished) is treated as unresolvable too,
 not silently reported as "in sync" against nothing.
+
+**`--source <dir>` is the per-invocation alternative (#14677).** It names the
+source checkout for exactly one run — no sidecar is read or written, so it is
+the right form from a linked worktree (where the worktree-isolation guard
+denies writing the primary checkout's sidecar) or for a one-off sync against a
+scratch clone. It is checked before and instead of every automatic rung: a
+`--source` that does not carry a populated `defaults/hooks` or
+`defaults/scripts` is a hard error naming the path, never a fallthrough to the
+sidecar, the metadata field, or the daemon payload.
 
 The same list also declares a file **repo-owned**, so the installer's reinstall
 clean sweep never deletes it — see

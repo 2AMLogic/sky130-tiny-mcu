@@ -177,11 +177,75 @@ removal is forced (`git worktree remove --force`): those uncommitted and
 untracked files are deleted with the worktree, while the branch ref and its
 commits are kept. Locked worktrees, the primary clone, and worktrees with
 unpublished commits are never reaped; when such a worktree is dirty, the
-refusal above still applies. On a successful preparation, every path the reap
-removes is reported to the host, which logs it with the account and
-repository. When preparation then refuses (for example `seat_dirty` on a
-different worktree), the removal is not reported: the refusal names only the
-worktree that caused it.
+refusal above still applies. Every path the reap removes is reported to the
+host on both success and refusal. The host logs each removed path with its
+account and repository before returning the preparation result.
+
+### An unwritable seat temp directory (`seat_temp_unwritable`)
+
+Preparation refuses with a message starting `seat_temp_unwritable:` when the
+seat's resolved temp directory (`/tmp` on the container's 512 MB tmpfs unless
+`TMPDIR` says otherwise) cannot hold a private probe directory, before any
+clone work is touched (#14929). A full or read-only temp dir previously
+surfaced downstream as a misleading `workspace Git fetch failed` or dirty
+clone refusal; the preflight names the actual cause. Two standing rules keep
+the temp dir from filling in the first place: every long-lived cache and Loom
+state dir the seat grows (`UV_CACHE_DIR`, `GH_CACHE_DIR`, the forge listing
+cache, the forge-call sink, the write-scope cache, the lease-renew store) is
+pinned to `/workspace/cache/*` at container create — only the per-container uv
+venv stays on `/tmp` — and a relative `TMPDIR` is ignored by every
+`host_tmp_base()` resolver so a state dir can never resolve into the job's
+working directory. Per-run step scratch on the temp base is drained by the
+session-exec worker when the invocation's lease ends (below).
+
+### Who reaps what: preparation vs the periodic seat pass
+
+Two paths reclaim inside a seat volume, with different rules (#14483 vs
+#14678):
+
+- **Job preparation** (per admission, the one target clone only): forgives
+  untracked caches, reaps linked worktrees whose tip heads a *finished* PR —
+  merged **or closed-unmerged**, dirty ones included via the forced removal
+  above — and backs the explicit `accounts session recover` listing and
+  `--discard`/`--worktree` removal of dirty leftovers. Preparation's reap
+  runs before its dirty check (`reap_finished_worktrees` before
+  `clean_worktrees`) and can remove a dirty, unlocked worktree whose tip is
+  published at a finished PR. That behavior is preparation's own and is not
+  changed by the seat pass.
+- **The periodic seat pass** (idle, every seat and every registered clone):
+  a leased maintenance verb — the account's exclusive lease, the container
+  proven running and idle, and **no `prepare` step**, so a dirty seat still
+  gets its pass — removes step scratch (`cache/<role>-<n>.*`, top-level
+  `*-tmp` and `<role>-<n>.*` dirs) older than
+  `autonomous.worktreeReaper.scratchReclaim.maxAgeHours`, and reaps a linked
+  worktree only when it is clean, fully published, unlocked, in-volume, and
+  its branch has a confirmed **merged** PR at that exact tip past
+  `autonomous.worktreeReaper.gracePeriodSecs`. It never quarantines and
+  never takes a backup; a worktree it cannot prove finished is preserved
+  with a reason (dirty, unpublished, open PR, closed-unmerged, grace not
+  passed, state unreadable). The pass honors the existing
+  `scratchReclaim.*` surface — no new flags — and reports reclaimed bytes
+  and preserved reasons through `reaper.pass` spans (class `seat`, the span's
+  repo label the seat's account name) instead of the host reaper's blanket
+  `preserved.private_workspace` wording for what it now handles.
+
+The preservation guarantee — a dirty, unpublished, open-PR or
+closed-unmerged worktree is never removed — is the **seat pass's** rule. A
+dirty worktree whose tip is published at a merged PR past grace is the
+dividing case: preparation may force-remove it at the next admission of that
+clone, the seat pass preserves and reports it. `.identity` records and the
+no-alternates / private-clone invariants are untouched by both paths.
+
+A third, smaller drain runs at a different cadence again: when the
+session-exec worker has reaped the invocation's whole process tree and the
+job's lease is over, it removes that run's step scratch (`<role>-<n>.*`,
+`*-tmp`) from the resolved **temp base** only (#14929), and only entries modified at/after the
+invocation started — the temp base is not a Loom-owned namespace (a seat's
+`/tmp` holds the long-lived `tmux-<uid>` socket dir, which matches the scratch
+name shape), so a pre-existing resident is never drained. Volume-side scratch
+stays with the age-gated seat pass above — the worker never touches the
+volume — and the shapes never match the long-lived caches, which live on the
+cache volume.
 
 ## Rebinding a registration after a repository transfer
 

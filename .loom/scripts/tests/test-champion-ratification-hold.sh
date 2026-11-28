@@ -144,6 +144,10 @@ echo "--- the hold is never waivable ---"
 tick_src=$(cat "$T/tick.sh")
 check 0 "$(grep -c 'standing_auth\|standingAuthorization\|auto-merge-ok' <<<"$tick_src" || true)" "the tick never consults a standing authorization or the auto-merge-ok override"
 check 1 "$(grep -c 'standing_auth_eval' "$HOLD_MD" | awk '$1>=1{print 1}')" "the prompt states standing_auth_eval is not consulted"
+# #14833: `stands` is same-head only — a moved head re-arms with a fresh notice
+# recording the new head (pinned in ratification/tests.rs::decide), so the
+# hold-state marker --release-hold reads never goes stale while the hold stands.
+check 1 "$(grep -c 'At any other head the verb answers .hold.' "$HOLD_MD" | awk '$1>=1{print 1}')" "the prompt states stands is same-head only (#14833)"
 check 1 "$(grep -c '### `ratification`: Ratification Hold' "$MERGE_MD")" "champion-pr-merge.md wires the hold in as ratification"
 check 1 "$(grep -c 'champion-ratification-hold.md' "$MERGE_MD" | awk '$1>=1{print 1}')" "champion-pr-merge.md points at the hold prompt"
 # merge-risk/critical-files run standing_auth_eval before ratification; it sits after critical-files and before mergeable.
