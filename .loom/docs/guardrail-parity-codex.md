@@ -373,7 +373,7 @@ it explicitly when sizing a multi-account Codex pool):
 docker run --rm -it --user 1000:1000 -w /tmp \
   -e CODEX_HOME=/home/loom/.codex-profile --entrypoint codex \
   -v ~/.loom/codex-profiles/alice:/home/loom/.codex-profile \
-  ghcr.io/rjwalters/loom-worker-session:latest                # session-managed
+  ghcr.io/2amlogic/loom-worker-session:latest                # session-managed
 CODEX_HOME=~/.loom/codex-profiles/alice codex                 # bare-metal only
 
 # 3. gate the pool: exit 0 only when EVERY profile is ready
@@ -385,10 +385,19 @@ sealed verdict (`trustSignal: "sealed-registration"`, `bypassHookTrust: true`).
 Without it, `verify` reports only recorded trust, as it always has. Only a
 caller that will pass the waiver may opt in.
 
-Step 3 succeeding (`ready: true` for every profile) is what unblocks
-`LOOM_ROLE=builder .loom/scripts/spawn-codex.sh` against that profile — without
-it, the mutable-role preflight in `spawn-codex.sh` (`defaults/scripts/spawn-codex.sh:635-693`)
-exits 78 before the CLI starts. Test coverage for the readiness signal itself:
+Builder, Doctor, Champion and Judge draw from the shared profiles that report
+`ready: true`. The selector names each skipped profile. If none is eligible,
+the runtime preference can fall through to its next tap. The adapter verifies
+the selected profile again before starting Codex.
+
+The work finder probes Builder preferences for step dispatch (#13983).
+An untrusted shared Codex seat cannot make a host-admitted Builder tap
+available. A workspace with no available Builder tap holds until an eligible
+tap recovers. A rejection that private containment could lift still leaves
+dispatch eligible, and the legacy `sweep-lifecycle` preference table does
+not participate in the step hold.
+
+Test coverage for the readiness signal itself:
 `defaults/scripts/tests/test-provision-codex-hooks.sh` (trust-baseline
 scenarios). Coverage that trust is waived only behind the sealed verdict:
 `test-provision-codex-hooks.sh`'s credential-hygiene section and
@@ -528,11 +537,8 @@ spawn-codex: hooks=<ready|not-ready|unavailable|verified-in-private-session> rol
   which is what `guard-loom-workflow.sh` and `guard-destructive.sh` police. They
   exit **78** unless `hooks=ready` (or `verified-in-private-session`, where
   `private-workspace execute` re-proves the registration and trust in-container
-  for them as for a mutable role). This is the backstop: the daemon's runtime
-  preference (`runtime_preference::codex_guard`) already treats Codex as
-  *unavailable* to these roles while any enabled shared profile fails `verify`
-  for the workspace, so the walk falls through to the next tap (Claude) instead
-  of selecting Codex and failing the tick (#9390).
+  for them as for a mutable role). The runtime preference skips the Codex
+  tap when no guard-ready seat is eligible for the workspace (#9390).
 - **Read-only roles** keep the conservative sandbox fallback but are told
   explicitly that hook parity was unavailable, and are never reported as
   Builder-capable.
@@ -1050,7 +1056,7 @@ silently waived.
 
 | Obligation | Mechanism | Where it is enforced |
 |---|---|---|
-| Host, sibling and peer repository isolation | Account-private named volume, independent Git root with no object alternates, no host repository/Docker socket/daemon socket mounted; Docker's own mount and ownership inventory re-validated by container ID | `docker::validate` at preparation **and** again in `Selection::contain`; the worker re-checks `/workspace/repo` is an owned clone |
+| Host, sibling and peer repository isolation | Account-private named volume, independent Git root whose only possible object alternate is its own read-only origin mirror (#14680; no alternate at all is the pre-#14680 shape and stays admitted), no host repository/Docker socket/daemon socket mounted; Docker's own mount and ownership inventory re-validated by container ID | `docker::validate` at preparation **and** again in `Selection::contain`; the worker re-checks `/workspace/repo` is an owned clone and that its alternate is exactly the repository's canonical read-only mirror bind |
 | Exclusive writer, stale-context refusal | `flock`-owned account lease carried to the child as an inherited file descriptor, plus the durable job identity (container ID + control identity) | `lease::Lease`, `dispatch::inherited_lease`, `Selection::contain`, `transport::run` |
 | **Protected remote operations** | The managed `pre_tool_use` bridge, executed from the **image-owned sealed bundle**, with the forced guard policy (`LOOM_FORCE_SCOPE=protected`, …) applied by the host to the Codex process itself. Admission additionally requires the clone to *have* a managed registration (`Report::managed`) **and** Codex to run it: hook trust recorded for the profile, or a registration Loom has sealed (#14105) — an untrusted hook is read and then silently ignored by the pinned CLI, so "registered" is not "enforcing" | `bundle::accept` / `bundle::rebind`, `containment::enforcing`, `bundle::apply_policy` |
 | Loom lifecycle controls | Same bridge (`guard-loom-workflow.sh` in the sealed bundle); `private-workspace` refuses the SSH/host/Docker `run-job` executor; MCP/plugin/alternate-profile/agent config audit and argv audit before exec | `control::audit`, `control::audit_args`, `worker_setup::check_host_job` |
@@ -1058,13 +1064,87 @@ silently waived.
 | Control/guard integrity | #8839's boundary: guard code root-owned and `chmod a-w` on a read-only rootfs, effective policy forced through `docker exec --env` (unreachable from any config tier), the three profile control files bound **read-only over their own paths**, all hashed into one identity that is rechecked at admission, at spawn and in-container before exec | `bundle.rs`, `docker::recheck_control`, `worker_setup::control_boundary` |
 | Secondary mutation channels | Shell, patch and helper calls all route through the bridge; `write_stdin` stays denied outright; argv-level profile/path/remote-executor selectors refused | `guard-codex-bridge.sh`, `control::audit_args` |
 
+### Host repository object mirrors (#14680)
+
+Each host keeps ONE object mirror per registered forge repository
+(`~/.loom/mirrors/<slug>/`, `LOOM_MIRROR_ROOT` to relocate), populated and
+refreshed solely from that repository's canonical origin under the #14716
+read-authority contract. The operator ruling of 2026-11-19 (option b) sets
+five conditions; the host-side store and the seat-side borrowing implement
+them as follows:
+
+- **Origin only.** A mirror is created and fetched by the host daemon
+  through `forge_auth::ProvedReader` — the exact verified route and the
+  exact verified credential, in a child environment cleared wholesale (an
+  inherited `GIT_CONFIG_PARAMETERS` cannot inject `url.*.insteadOf`), with
+  `GIT_ALLOW_PROTOCOL=https`, against a mirror config verified to carry
+  only the keys the store itself wrote (`mirror::verify_mirror_config`).
+  Seat clones, seat refs and unpublished seat objects are never inputs, and
+  nothing a seat produces ever enters the mirror. A failed verification is
+  never fatal: the session keeps the fully private legacy clone path.
+- **Read-only into every seat.** A container is created with one read-only
+  bind per authorized repository, at exactly `MIRRORS/<slug>/objects` from
+  the host mirror root, only when the host opts in via
+  `accounts.session.objectMirrors`; the slugs it was created with are
+  recorded in the seat's state and re-verified against Docker's own mount
+  inventory on every reuse (`docker::validate_settings`: exact source,
+  destination and read-only mode, no extra bind). A clone's sole possible
+  alternate is that path for exactly its own repository
+  (`repository::verify_alternates` at preparation,
+  `containment::in_bound_container` at admission — which also refuses a
+  symlinked or indirect mirror, a writable mount, and
+  `GIT_ALTERNATE_OBJECT_DIRECTORIES`), and a clone with no alternate stays
+  supported. An operator extra mount can never squat the `/mirrors`
+  namespace. A borrowed-from clone whose mirror bind cannot be restored
+  refuses the recreation rather than dangling (`mirror::ensure_bound`).
+  Opting in is one-way per seat: with `accounts.session.objectMirrors`
+  back off, the seat's next recreation carries no binds and a clone that
+  already borrows is refused fail-closed at preparation
+  (`repository::verify_alternates`) — "workspace must own a real
+  clone and private Git objects; its object alternate is not authorized for
+  this session (a clone that already borrows needs its
+  mirror bind back: restore the mirror, or re-enable
+  accounts.session.objectMirrors)" — and the supported remedies are
+  restoring the mirror / re-enabling the flag, or discarding that seat's
+  clone and re-cloning; no supported path un-borrows a live clone.
+- **Migration, in place and retryable.** At preparation, a fresh clone
+  borrows from creation and an existing clone migrates in place
+  (`repository::borrow_published`): the alternate is verified and written,
+  a local-only `repack -a -d -l` drops the local duplicates of published
+  objects while every unpublished commit, ref, index, identity record and
+  linked worktree stays local, and `fsck --full` proves connectivity
+  before a completion marker makes the step a no-op. Interruptions are
+  safe to retry; a repository registered after the container's creation
+  keeps its private clone until the next idle recreation installs and
+  verifies the new bind.
+- **Never pruned.** The fetch is `--no-prune`, the mirror sets `gc.auto=0`
+  and `fetch.prune=false`, and no code path repacks or deletes mirror
+  objects: an object whose upstream ref moved or vanished stays readable
+  for every seat that may still reference it. A failed fetch leaves the
+  previous object set and every borrower record exactly as it was.
+- **Contract rewritten, not bypassed.** Publication and admission are
+  separate fail-closed decisions (`read_authority::publish` /
+  `admit_borrower`): a store pins the FIRST proved grant it was created
+  under, rotation under the same authority passes, and a different
+  authority, scope or replacement repository (a moved provider ID at the
+  same slug) never inherits the store. A proof with no durable expiry
+  (Gitea) is in-flight only: the store persists no credential and no
+  proof, so every publication starts from a fresh verification.
+- **Measurement.** `MirrorStore::objects_bytes` reports the store's size
+  for the one-host before/after comparison this issue requires and the
+  recurring seat-volume metric of #14678.
+
+Two seats refreshing the same repository converge on one usable store
+(per-store `flock`, bounded wait), and an unproved route is skipped with a
+log line — never a refusal of the session.
+
 ### Supported combinations and evidence requirements
 
 | Component | Supported value |
 |---|---|
 | Control protocol | `loom-private-control-v1`, `control_version` 2 (exact match on both sides) |
 | Workspace protocol | `loom-private-workspace-v1` |
-| Session image | `ghcr.io/rjwalters/loom-worker-session:<version>` built from `docker/session/Dockerfile`, bundle sealed and digest-intact |
+| Session image | `ghcr.io/2amlogic/loom-worker-session:<version>` built from `docker/session/Dockerfile`, bundle sealed and digest-intact |
 | Codex CLI | as pinned by `CODEX_VERSION` (tracks upstream latest via `harness-pins.yml`; 0.160.0 at 2026-10-02); floor `0.146.0`, recorded by `seal-control` from the CLI observed in the image |
 | Codex hook schema | `pre_tool_use`, pinned at `0.146.0` in `guard-codex-bridge.sh`; the 0.149.1 wire evidence is in [private-control-bundle.md](private-control-bundle.md) |
 | Hook trust | Recorded once per profile (#5005, measured by the install-time trust-baseline diff), **or** a registration Loom seals (#14105, below) |
@@ -1216,7 +1296,8 @@ loom-daemon accounts add codex alice --device-auth
 loom-daemon accounts provision --all          # populate every pooled profile
 loom-daemon accounts import codex bob --auth-file ~/.codex/auth.json
 loom-daemon accounts status codex alice --json
-loom-daemon accounts disable codex alice
+loom-daemon accounts disable codex alice --shared   # across workspaces on this host
+loom-daemon accounts enable codex alice --shared    # lift the machine-wide disable
 loom-daemon accounts reauth codex alice --device-auth
 loom-daemon accounts remove codex alice       # recoverable quarantine
 loom-daemon accounts remove codex alice --purge
@@ -1228,6 +1309,7 @@ host: the repo-local one belonging to a checkout, and the **shared**
 machine-level one at `~/.loom/accounts.json` (override the root with
 `LOOM_SHARED_ACCOUNTS_ROOT`; an explicitly empty value disables it). Resolution:
 
+- `disable --shared` and `enable --shared` act on the machine-level registry from any checkout. A shared disable also covers locally enabled entries backed by the same profile. Local disables still apply after a shared enable.
 - An explicit `--workspace <path>` is honoured literally.
 - Otherwise the nearest enclosing Loom workspace (the first ancestor directory
   holding a `.loom/`) wins, so running from a subdirectory of a checkout still
@@ -1348,7 +1430,7 @@ itself and rewrites `auth.json` in place. Consequences:
 ## References
 
 - [`runtime-adapters.md`](runtime-adapters.md) — the seven-point contract and tier policy
-- [ADR-0012](https://github.com/rjwalters/loom/blob/main/docs/adr/0012-runtime-adapter-contract.md) — runtime adapter contract
+- [ADR-0012](https://github.com/2AMLogic/loom/blob/main/docs/adr/0012-runtime-adapter-contract.md) — runtime adapter contract
 - [`guard-hooks.md`](guard-hooks.md) — the Loom guard catalog this maps against
 - `defaults/scripts/spawn-codex.sh` — the adapter
 - `defaults/scripts/lib/classify-error.sh` — the `codex` provider table

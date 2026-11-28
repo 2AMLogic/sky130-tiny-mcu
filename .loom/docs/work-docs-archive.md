@@ -24,7 +24,7 @@ Guide's Document Maintenance section
 
 | Path | Holds |
 |------|-------|
-| `WORK_LOG.md` | preamble, `## Archives` index, recent `### YYYY-MM-DD` sections |
+| `WORK_LOG.md` | preamble, `## Archives` index, `## Entries` heading, recent `### YYYY-MM-DD` sections |
 | `work_log/WORK_LOG_YYYY-MM.md` | one file per calendar month of archived sections, newest first |
 
 Each archive starts with a `# Work Log Archive — YYYY-MM` preamble, then the
@@ -64,6 +64,22 @@ archives it touched.
 exactly once across the active file and all archives, and that every index
 link resolves to a regular file.
 
+Both `check` modes run their built-in checks directly. To run a repository
+validator before Guide publishes work docs, commit an executable
+`.loom/docs-post-stage.sh`. For example, if CI already runs
+`scripts/check_work_docs.py`, use the same script in the hook.
+
+```sh
+#!/bin/sh
+exec python3 scripts/check_work_docs.py >&2
+```
+
+Guide invokes the hook from the candidate docs worktree after staging.
+The wrapper preserves the validator’s exit status and sends its output to
+stderr. Empty stdout tells Guide to stage no extra files. A nonzero exit
+stops the tick before it commits, pushes or opens a PR. See the “Post-stage
+hook” section of the [Guide role](https://github.com/2AMLogic/loom/blob/main/defaults/.claude/commands/loom/guide.md#post-stage-hook-optional-repo-provided--13892).
+
 ## Eligibility floor
 
 `--older-than-days` defaults to **60** and is rejected below **45**. Guide's
@@ -80,6 +96,10 @@ every candidate's entry in the active file. Slice 2 relies on this invariant.
 - any heading that is not a parseable `### YYYY-MM-DD` (for example
   `### 2026-08-09 — Residual gap notice`) and its body;
 - the `## Archives` index (regenerated in place, not rotated).
+- a trailing HTML comment region at the end of the file (Guide's
+  `<!-- Maintained automatically … -->` footer) that follows the last dated
+  section: it stays in the active file instead of riding along with that
+  section (#15271).
 
 Several sections with the same date (the log has such days) move together,
 keeping their relative order.

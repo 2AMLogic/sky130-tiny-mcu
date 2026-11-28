@@ -38,10 +38,13 @@ Rationale: `.loom/docs/ratification-hold.md`.
   hold's #9016 rule, on purpose: the operator must *act*.
 - The release is scoped to a **head**: a later push that still declares
   ratification re-arms the hold, because the text the operator released may not
-  be the text now on the PR.
+  be the text now on the PR. The re-arm posts a fresh hold notice recording the
+  new head (#14833) — `stands` (no comment) is the answer only at the head the
+  standing notice records — so the `champion:hold-state` marker
+  `merge-pr.sh --release-hold` reads never names a head the hold has moved off.
 - Fail closed: a candidate file whose head content cannot be read is never
-  `clear`. With no hold standing the tick defers (no merge, no marker); with one
-  standing it stays.
+  `clear`. The tick defers (no merge, no marker, no writes) whether or not a
+  hold is standing — the verb exits 3 before `decide` runs.
 
 A held PR that goes CONFLICTING is served by Doctor, hold intact (#13505): Doctor resolves and pushes, leaves `loom:blocked` and `loom:pr` on, and Judge re-reviews the new head; the operator then ratifies a clean head.
 
@@ -63,10 +66,10 @@ The verb folds the state, the detector and the release comment into one
 |---|---|
 | `none` | nothing; continue to the other criteria |
 | `hold` | post the notice, add `loom:blocked`, write the park record; **stop** |
-| `stands` | re-assert `loom:blocked` + park record, no comment; **stop** |
+| `stands` | the standing notice records THIS head: re-assert `loom:blocked` + park record, no comment; **stop**. At any other head the verb answers `hold` (a fresh notice re-records it, #14833) |
 | `release` | post the released marker, remove `loom:blocked` only if the other-holds read succeeded and said none stands; continue (a later tick sees `none` at this head) |
 | `clear` | the head no longer declares it: post the cleared marker, remove `loom:blocked` unless the other-holds read says another Champion hold stands (an unreadable read keeps the label, #14307); continue |
-| `defer` | unreadable candidate, no hold standing: do not merge this tick, write nothing; **stop** |
+| `defer` | unreadable candidate: do not merge this tick, write nothing (a read-failure tick does not re-assert `loom:blocked` or the park record); **stop** |
 
 Exit 3 or no stdout (a failed read) is `defer`; exit 2 (a `loom-daemon` older
 than the verb) is `none`, since `merge-pr.sh` still refuses a held PR.

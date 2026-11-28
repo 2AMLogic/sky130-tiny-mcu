@@ -240,8 +240,9 @@ JSON
     echo "Test 2c: resolve the repo threshold and execute the actual WORK_LOG gate"
     WORK_LOG_GATE="$(printf '%s\n' "$UWL_BODY" | awk '
         /if \[ "\$total_new" -eq 0 \]; then/ { in_gate = 1 }
-        /# Group entries by date/ { in_gate = 0 }
+        /^  if \[ "\$total_new" -lt "\$min_entries" \]; then/ { in_threshold = 1 }
         in_gate { print }
+        in_threshold && /^  fi$/ { exit }
     ')"
 
     run_threshold_gate() (
